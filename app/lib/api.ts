@@ -6,7 +6,7 @@ const API_URL =
 export const searchSongs = async (query: string) => {
   try {
     const response = await axios.get(
-      `${API_URL}/search?q=${query}`
+      `${API_URL.replace(/\/$/, "")}/search?q=${query}`
     );
 
     return response.data;
