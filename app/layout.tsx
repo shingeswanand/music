@@ -14,6 +14,15 @@ export const metadata: Metadata = {
   title: "Music App",
   description:
     "Spotify-style music streaming app",
+
+  manifest: "/manifest.json",
+
+  themeColor: "#000000",
+
+  icons: {
+    icon: "/icon-192.png",
+    apple: "/icon-192.png",
+  },
 };
 
 export default function RootLayout({

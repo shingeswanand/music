@@ -4,7 +4,7 @@ import {
   useRef,
   useState,
 } from "react";
-
+import { useEffect } from "react";
 import ReactPlayer
 from "react-player";
 
@@ -36,6 +36,56 @@ export default function Player() {
     playNextSong,
     playPrevSong,
   } = usePlayer();
+
+useEffect(() => {
+  if (!currentSong) return;
+
+  if ("mediaSession" in navigator) {
+    navigator.mediaSession.metadata =
+      new MediaMetadata({
+        title: currentSong.title,
+        artist:
+          currentSong.channelTitle || "Unknown",
+        artwork: [
+          {
+            src:
+              currentSong.thumbnail?.thumbnails?.[0]
+                ?.url || "",
+            sizes: "512x512",
+            type: "image/jpeg",
+          },
+        ],
+      });
+
+    navigator.mediaSession.setActionHandler(
+      "play",
+      async () => {
+        setIsPlaying(true);
+      }
+    );
+
+    navigator.mediaSession.setActionHandler(
+      "pause",
+      () => {
+        setIsPlaying(false);
+      }
+    );
+
+    navigator.mediaSession.setActionHandler(
+      "nexttrack",
+      () => {
+        playNextSong();
+      }
+    );
+
+    navigator.mediaSession.setActionHandler(
+      "previoustrack",
+      () => {
+        playPrevSong();
+      }
+    );
+  }
+}, [currentSong, isPlaying]);
 
   const [played, setPlayed] =
     useState(0);
@@ -83,25 +133,26 @@ export default function Player() {
       <div className="absolute opacity-0 pointer-events-none">
 
         <ReactPlayer
-          ref={playerRef}
-          url={videoUrl}
-          playing={isPlaying}
-          controls={false}
-          width="1px"
-          height="1px"
-          volume={volume}
-          onProgress={(state: any) =>
-            setPlayed(
-              state.played
-            )
-          }
-          onDuration={(
-            d: number
-          ) =>
-            setDuration(d)
-          }
-          onEnded={playNextSong}
-        />
+  ref={playerRef}
+  url={videoUrl}
+  playing={isPlaying}
+  controls={false}
+  width="1px"
+  height="1px"
+  volume={volume}
+  playsinline={true}
+  pip={true}
+  config={{
+    youtube: {
+      playerVars: {
+        autoplay: 1,
+        controls: 0,
+        modestbranding: 1,
+        rel: 0,
+      },
+    },
+  }}
+/>
       </div>
 
       {/* FULLSCREEN PLAYER */}
