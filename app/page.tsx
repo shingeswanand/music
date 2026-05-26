@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 
 import Sidebar from "./components/Sidebar";
-import Player from "./components/Player";
+// import Player from "./components/Player";
 
 import TrendingSongs from "./components/TrendingSongs";
 import RecentlyPlayed from "./components/RecentlyPlayed";
@@ -179,7 +179,7 @@ export default function Home() {
       </div>
 
       {/* PLAYER */}
-      <Player />
+      
     </main>
   );
 }
