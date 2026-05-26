@@ -173,7 +173,7 @@ export default function Player() {
         Now Playing
       </p>
 
-      <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-black leading-tight line-clamp-3 text-center lg:text-left">
+      <h2 className="text-2xl sm:text-3xl md:text-3xl lg:text-3xl font-black leading-tight line-clamp-3 text-center lg:text-left text-white">
 
         {currentSong.title}
       </h2>
@@ -344,7 +344,7 @@ export default function Player() {
 
             <div className="min-w-0">
 
-              <h2 className="font-semibold truncate text-sm">
+              <h2 className="font-semibold truncate text-sm text-white">
 
                 {currentSong.title}
               </h2>

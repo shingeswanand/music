@@ -23,16 +23,53 @@ app.get("/search", async (req, res) => {
       );
 
     // res.json(result.items);
-    const filteredSongs = result.items.filter(
-  (item) =>
-    item.type === "video" &&
-    !item.title
-      ?.toLowerCase()
-      .includes("news") &&
-    !item.title
-      ?.toLowerCase()
-      .includes("trailer")
-);
+   const filteredSongs =
+  result.items.filter((item) => {
+
+    const title =
+      item.title?.toLowerCase() || "";
+
+    return (
+
+      // ONLY VIDEOS
+      item.type === "video" &&
+
+      // REMOVE BAD CONTENT
+      !title.includes("news") &&
+      !title.includes("trailer") &&
+      !title.includes("teaser") &&
+      !title.includes("interview") &&
+      !title.includes("podcast") &&
+      !title.includes("episode") &&
+      !title.includes("shorts") &&
+      !title.includes("vlog") &&
+      !title.includes("reaction") &&
+      !title.includes("movie scene") &&
+      !title.includes("review") &&
+      !title.includes("comedy") &&
+      !title.includes("speech") &&
+      !title.includes("dialogue") &&
+      !title.includes("bgm") &&
+
+      // MUST CONTAIN MUSIC WORDS
+      (
+        title.includes("song") ||
+        title.includes("music") ||
+        title.includes("audio") ||
+        title.includes("official") ||
+        title.includes("lyrics") ||
+        title.includes("video")
+      )
+
+      && (
+  title.includes("marathi") ||
+  title.includes("hindi") ||
+  title.includes("bollywood") ||
+  title.includes("song") ||
+  title.includes("official")
+)
+    );
+  });
 
 res.json(filteredSongs);
 

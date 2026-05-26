@@ -54,14 +54,13 @@ export const PlayerProvider = ({
   }, []);
 
   // NEXT SONG
-  const playNextSong = () => {
+ const playNextSong =
+  async () => {
 
     if (
       !currentSong ||
       songs.length === 0
-    ) {
-      return;
-    }
+    ) return;
 
     const currentIndex =
       songs.findIndex(
@@ -73,6 +72,7 @@ export const PlayerProvider = ({
     const nextSong =
       songs[currentIndex + 1];
 
+    // PLAY NEXT SONG
     if (nextSong) {
 
       setCurrentSong(
@@ -80,7 +80,88 @@ export const PlayerProvider = ({
       );
 
       setIsPlaying(true);
+
+      // PRELOAD MORE SONGS
+      // WHEN ONLY 2 SONGS LEFT
+
+      const songsLeft =
+  songs.length -
+  (currentIndex + 1);
+
+      if (songsLeft <= 2) {
+
+        try {
+
+          const query =
+            currentSong.channelTitle ||
+            currentSong.title;
+
+          const response =
+            await fetch(
+              `/api/search?q=${encodeURIComponent(
+                query
+              )}`
+            );
+
+          const data =
+            await response.json();
+
+          if (
+            data &&
+            data.length > 0
+          ) {
+
+            // REMOVE DUPLICATES
+            const uniqueSongs =
+              data.filter(
+                (newSong: any) =>
+
+                  !songs.some(
+                    (
+                      existingSong
+                    ) =>
+
+                      existingSong.id ===
+                      newSong.id
+                  )
+              );
+
+            if (
+              uniqueSongs.length > 0
+            ) {
+
+              setSongs((prevSongs: any[]) => [
+
+  ...prevSongs,
+
+  ...uniqueSongs.filter(
+    (newSong: any) =>
+
+      !prevSongs.some(
+        (existingSong) =>
+
+          existingSong.id ===
+          newSong.id
+      )
+  ),
+]);
+            }
+          }
+
+        } catch (error) {
+
+          console.log(
+            "Queue preload error:",
+            error
+          );
+        }
+      }
+
+      return;
     }
+
+    // FALLBACK
+    setIsPlaying(false);
   };
 
   // PREVIOUS SONG

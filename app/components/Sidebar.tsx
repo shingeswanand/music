@@ -37,7 +37,7 @@ export default function Sidebar() {
 
             {/* LOGO */}
             <h1 className="text-green-500 text-3xl md:text-4xl font-bold">
-              Spotify
+              SMS Music
             </h1>
           </div>
 

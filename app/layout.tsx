@@ -1,5 +1,8 @@
 import "./globals.css";
 
+import type { Metadata }
+from "next";
+
 import {
   PlayerProvider,
 } from "./context/PlayerContext";
@@ -7,19 +10,31 @@ import {
 import Player
 from "./components/Player";
 
+export const metadata: Metadata = {
+  title: "Music App",
+  description:
+    "Spotify-style music streaming app",
+};
+
 export default function RootLayout({
   children,
-}: Readonly<{
+}: {
   children: React.ReactNode;
-}>) {
+}) {
 
   return (
-    <html lang="en">
+    <html
+      lang="en"
+      suppressHydrationWarning
+    >
 
-      <body>
+      <body
+        className="bg-black text-white overflow-x-hidden"
+      >
 
         <PlayerProvider>
 
+          {/* PAGES */}
           {children}
 
           {/* GLOBAL PLAYER */}
