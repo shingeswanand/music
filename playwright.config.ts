@@ -26,5 +26,14 @@ export default defineConfig({
     url: "http://127.0.0.1:3000",
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,
+    env: {
+      // Live search talks to third-party YouTube mirrors. Tests point the
+      // server at a local mock mirror (see tests/live-search-server.spec.ts)
+      // and intercept the browser's requests, so the suite never depends on a
+      // public instance being up. Unset this to exercise the real thing.
+      MUSIC_YOUTUBE_MIRRORS:
+        process.env.MUSIC_YOUTUBE_MIRRORS ??
+        `piped:http://127.0.0.1:${process.env.MUSIC_TEST_MIRROR_PORT ?? 3987}`,
+    },
   },
 });

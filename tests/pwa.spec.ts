@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import { blockLiveMirrors } from "./live-mirrors";
 
 test.use({ serviceWorkers: "allow" });
 
@@ -11,6 +12,7 @@ test("production PWA opens its cached listening space offline without caching re
     "Service-worker registration is production-only",
   );
   test.setTimeout(60_000);
+  await blockLiveMirrors(page);
   await page.goto("/");
   await page.evaluate(async () => {
     await navigator.serviceWorker.ready;

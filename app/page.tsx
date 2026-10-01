@@ -46,6 +46,13 @@ import type { Category, SearchResponse, Song, View } from "./lib/types";
 
 type SearchState = SearchResponse & { loading: boolean; error?: string };
 
+/** Where the results on screen came from. */
+function sourceLabel(source: SearchResponse["source"]) {
+  if (source === "youtube") return "Streaming in full from YouTube";
+  if (source === "apple") return "Official previews available";
+  return "From your handpicked catalogue";
+}
+
 export default function Home() {
   const [history, setHistory] = useState<{ entries: View[]; index: number }>({
     entries: [{ type: "home" }],
@@ -470,27 +477,30 @@ export default function Home() {
                 </>
               ) : (
                 <>
-                  {search?.source === "offline" && (
-                    <div className="offline-note" role="status">
-                      <FiWifiOff />
-                      <span>
-                        {search.error ??
-                          "Live search is temporarily unavailable. Your handpicked catalogue is still here."}
-                      </span>
-                      <button
-                        type="button"
-                        className="text-link"
-                        onClick={() => void runSearch(view.query ?? "")}
-                      >
-                        Try again
-                      </button>
-                    </div>
-                  )}
+                  {search &&
+                    (search.source === "offline" || search.live === false) && (
+                      <div className="offline-note" role="status">
+                        <FiWifiOff />
+                        <span>
+                          {search.error ??
+                            "Live search is temporarily unavailable. Your handpicked catalogue is still here."}
+                        </span>
+                        <button
+                          type="button"
+                          className="text-link"
+                          onClick={() => void runSearch(view.query ?? "")}
+                        >
+                          Try again
+                        </button>
+                      </div>
+                    )}
                   {search?.songs.length ? (
                     <>
                       <SectionTitle
                         title="Found your sound"
-                        subtitle={`${search.songs.length} ${search.songs.length === 1 ? "track" : "tracks"} · Official previews available`}
+                        subtitle={`${search.songs.length} ${
+                          search.songs.length === 1 ? "track" : "tracks"
+                        } · ${sourceLabel(search.source)}`}
                         action={() => startMix(search.songs)}
                         actionLabel="Play results"
                       />
