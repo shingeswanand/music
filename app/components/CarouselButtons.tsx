@@ -1,35 +1,31 @@
 "use client";
 
-import {
-  FaChevronLeft,
-  FaChevronRight,
-} from "react-icons/fa";
-
-type Props = {
-  scrollPrev: () => void;
-  scrollNext: () => void;
-};
+import { FiChevronLeft, FiChevronRight } from "react-icons/fi";
 
 export default function CarouselButtons({
   scrollPrev,
   scrollNext,
-}: Props) {
-
+}: {
+  scrollPrev: () => void;
+  scrollNext: () => void;
+}) {
   return (
-    <div className="flex items-center gap-3">
-
+    <div className="carousel-buttons">
       <button
+        type="button"
+        className="icon-button"
         onClick={scrollPrev}
-        className="w-10 h-10 rounded-full bg-[#1e1e1e] hover:bg-[#2a2a2a] transition flex items-center justify-center"
+        aria-label="Previous items"
       >
-        <FaChevronLeft />
+        <FiChevronLeft />
       </button>
-
       <button
+        type="button"
+        className="icon-button"
         onClick={scrollNext}
-        className="w-10 h-10 rounded-full bg-[#1e1e1e] hover:bg-[#2a2a2a] transition flex items-center justify-center"
+        aria-label="Next items"
       >
-        <FaChevronRight />
+        <FiChevronRight />
       </button>
     </div>
   );

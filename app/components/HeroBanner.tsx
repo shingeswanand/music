@@ -1,102 +1,193 @@
 "use client";
 
+import Image from "next/image";
+import { useState } from "react";
 import {
-  FaPlay,
-} from "react-icons/fa";
+  FiArrowUpRight,
+  FiChevronLeft,
+  FiChevronRight,
+  FiDisc,
+  FiPlay,
+} from "react-icons/fi";
+import { CURATED_PLAYLISTS, getPlaylistSongs } from "../lib/catalogue";
+import { usePlayer } from "../context/PlayerContext";
+import Artwork from "./Artwork";
 
-import { usePlayer }
-from "../context/PlayerContext";
+type Props = { onExplore: (id: string) => void };
+const spotlights = [
+  {
+    playlist: "bollywood",
+    badge: "The feel-good edit",
+    title: (
+      <>
+        Some songs just
+        <br />
+        feel like <em>home.</em>
+      </>
+    ),
+    description: (
+      <>
+        The best of Hindi & Marathi. A little nostalgia,
+        <br className="desktop-break" /> a whole lot of feeling.
+      </>
+    ),
+  },
+  {
+    playlist: "late-night",
+    badge: "After-hours essentials",
+    title: (
+      <>
+        The city sleeps.
+        <br />
+        Your music <em>doesn’t.</em>
+      </>
+    ),
+    description: (
+      <>
+        For quiet roads, wandering thoughts,
+        <br className="desktop-break" /> and one more song before home.
+      </>
+    ),
+  },
+  {
+    playlist: "good-energy",
+    badge: "A little pick-me-up",
+    title: (
+      <>
+        Good days start
+        <br />
+        with good <em>music.</em>
+      </>
+    ),
+    description: (
+      <>
+        A fresh dose of feel-good favorites.
+        <br className="desktop-break" /> Press play. Find your happy place.
+      </>
+    ),
+  },
+];
 
-type Props = {
-  song: any;
-};
-
-export default function HeroBanner({
-  song,
-}: Props) {
-
-  const {
-    setCurrentSong,
-    setIsPlaying,
-  } = usePlayer();
-
-  if (!song) return null;
-
+export default function HeroBanner({ onExplore }: Props) {
+  const [slide, setSlide] = useState(0);
+  const { playSong } = usePlayer();
+  const spotlight = spotlights[slide];
+  const playlist = CURATED_PLAYLISTS.find(
+    (item) => item.id === spotlight.playlist,
+  )!;
+  const queue = getPlaylistSongs(playlist);
+  const dailyQueue = CURATED_PLAYLISTS.flatMap(getPlaylistSongs).filter(
+    (song, index, all) =>
+      all.findIndex((item) => item.id === song.id) === index,
+  );
+  const dailyFirst = dailyQueue[1];
   return (
-    <section className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-green-500 via-emerald-600 to-black p-6 md:p-10 mb-12 mt-10">
-
-      {/* BACKGROUND GLOW */}
-      <div className="absolute top-0 right-0 w-72 h-72 bg-green-400/20 blur-3xl rounded-full"></div>
-
-      <div className="relative z-10 flex flex-col lg:flex-row items-center justify-between gap-10">
-
-        {/* LEFT */}
-        <div className="max-w-2xl">
-
-          <p className="uppercase tracking-[4px] text-sm font-semibold text-white/80 mb-4">
-            Trending Now
-          </p>
-
-          <h1 className="text-4xl sm:text-5xl lg:text-3xl font-black leading-tight text-white">
-
-            {song.title}
-          </h1>
-
-          <p className="text-white/80 mt-6 text-sm sm:text-base max-w-xl leading-relaxed">
-
-            Listen to trending Hindi &
-            Marathi music from{" "}
-            {song.channelTitle}
-          </p>
-
-          {/* BUTTONS */}
-          <div className="flex flex-wrap items-center gap-4 mt-8">
-
+    <div className="hero-layout">
+      <section className="hero-banner" aria-label="Featured playlist">
+        <Image
+          src="/images/discovery-hero.jpg"
+          alt="An indie musician performing under warm amber stage lights"
+          fill
+          unoptimized
+          priority
+          className="hero-photo"
+          sizes="(max-width: 700px) 100vw, 75vw"
+        />
+        <div className="hero-shade" />
+        <div className="hero-content" key={slide}>
+          <span className="spotlight-badge">
+            <FiDisc />
+            {spotlight.badge}
+          </span>
+          <h2>{spotlight.title}</h2>
+          <p>{spotlight.description}</p>
+          <div className="hero-actions">
             <button
-              onClick={() => {
-                setCurrentSong(song);
-                setIsPlaying(true);
-              }}
-              className="bg-black hover:bg-[#121212] transition px-6 py-3 rounded-full font-semibold flex items-center gap-3"
+              type="button"
+              className="primary-button"
+              onClick={() => playSong(queue[0], queue)}
             >
-
-              <FaPlay />
-
-              Play Now
+              <FiPlay className="filled-play" />
+              Play the mix
             </button>
-
-            <button className="bg-white/20 hover:bg-white/30 transition backdrop-blur-lg px-6 py-3 rounded-full font-semibold">
-
-              Explore
+            <button
+              type="button"
+              className="hero-explore"
+              onClick={() => onExplore(playlist.id)}
+            >
+              Explore playlist
+              <FiArrowUpRight />
             </button>
           </div>
         </div>
-
-        {/* RIGHT IMAGE */}
-        <div className="relative">
-
-          <img
-            src={
-              song.thumbnail
-                ?.thumbnails?.[0]?.url
-            }
-            alt={song.title}
-            className="w-full max-w-[320px] md:max-w-[420px] rounded-3xl object-cover shadow-2xl"
-          />
-
-          {/* FLOATING CARD */}
-          <div className="absolute -bottom-5 -left-5 bg-black/70 backdrop-blur-xl border border-white/10 rounded-2xl px-4 py-3 shadow-xl">
-
-            <p className="text-xs text-gray-400">
-              Now Trending
-            </p>
-
-            <h3 className="font-semibold line-clamp-1 max-w-[180px]">
-              {song.title}
-            </h3>
+        <div className="hero-footer">
+          <span>
+            <i />
+            Handpicked. Heart-approved.
+          </span>
+          <div className="hero-pagination">
+            <span>
+              0{slide + 1}
+              <b> / 03</b>
+            </span>
+            <button
+              type="button"
+              className="icon-button"
+              aria-label="Previous featured playlist"
+              onClick={() =>
+                setSlide(
+                  (previous) =>
+                    (previous + spotlights.length - 1) % spotlights.length,
+                )
+              }
+            >
+              <FiChevronLeft />
+            </button>
+            <button
+              type="button"
+              className="icon-button"
+              aria-label="Next featured playlist"
+              onClick={() =>
+                setSlide((previous) => (previous + 1) % spotlights.length)
+              }
+            >
+              <FiChevronRight />
+            </button>
           </div>
         </div>
-      </div>
-    </section>
+      </section>
+      <button
+        type="button"
+        className="daily-mix"
+        onClick={() =>
+          playSong(dailyFirst, [
+            dailyFirst,
+            ...dailyQueue.filter((song) => song.id !== dailyFirst.id),
+          ])
+        }
+        aria-label="Play your Daily Mix"
+      >
+        <span className="daily-kicker">A GOOD KIND OF SURPRISE</span>
+        <span className="mix-art">
+          <span className="vinyl-disc">
+            <span />
+          </span>
+          <Artwork src="/images/heeriye.webp" alt="" className="mix-cover" />
+          <span className="mix-sticker">
+            <FiDisc />
+          </span>
+        </span>
+        <span className="mix-genre">HINDI · MARATHI · INDIE</span>
+        <span className="mix-bottom">
+          <span>
+            <strong>Your Daily Mix</strong>
+            <span>A little familiar. A little unexpected.</span>
+          </span>
+          <span className="mix-play">
+            <FiPlay />
+          </span>
+        </span>
+      </button>
+    </div>
   );
 }

@@ -1,1 +1,166 @@
-if(!self.define){let e,s={};const n=(n,t)=>(n=new URL(n+".js",t).href,s[n]||new Promise(s=>{if("document"in self){const e=document.createElement("script");e.src=n,e.onload=s,document.head.appendChild(e)}else e=n,importScripts(n),s()}).then(()=>{let e=s[n];if(!e)throw new Error(`Module ${n} didn’t register its module`);return e}));self.define=(t,a)=>{const i=e||("document"in self?document.currentScript.src:"")||location.href;if(s[i])return;let c={};const r=e=>n(e,i),o={module:{uri:i},exports:c,require:r};s[i]=Promise.all(t.map(e=>o[e]||r(e))).then(e=>(a(...e),c))}}define(["./workbox-4754cb34"],function(e){"use strict";importScripts(),self.skipWaiting(),e.clientsClaim(),e.precacheAndRoute([{url:"/_next/static/chunks/179-b9642ee4920dd1e6.js",revision:"b9642ee4920dd1e6"},{url:"/_next/static/chunks/28-4335b73dd0d53865.js",revision:"4335b73dd0d53865"},{url:"/_next/static/chunks/4bd1b696-215e5051988c3dde.js",revision:"215e5051988c3dde"},{url:"/_next/static/chunks/794-5fb6eff04a716ab6.js",revision:"5fb6eff04a716ab6"},{url:"/_next/static/chunks/899.1813981119fa1f8a.js",revision:"1813981119fa1f8a"},{url:"/_next/static/chunks/8e1d74a4-c4a3fa10256edde7.js",revision:"c4a3fa10256edde7"},{url:"/_next/static/chunks/966.1775eb621d8d3e09.js",revision:"1775eb621d8d3e09"},{url:"/_next/static/chunks/app/_global-error/page-f3c3aa4c8e468f83.js",revision:"f3c3aa4c8e468f83"},{url:"/_next/static/chunks/app/_not-found/page-f061c0c2ee60f949.js",revision:"f061c0c2ee60f949"},{url:"/_next/static/chunks/app/api/search/route-f3c3aa4c8e468f83.js",revision:"f3c3aa4c8e468f83"},{url:"/_next/static/chunks/app/layout-829f8fb94fbfb368.js",revision:"829f8fb94fbfb368"},{url:"/_next/static/chunks/app/page-1528da966f5f848c.js",revision:"1528da966f5f848c"},{url:"/_next/static/chunks/framework-93cda6578f6c76ec.js",revision:"93cda6578f6c76ec"},{url:"/_next/static/chunks/main-5d6a3bd385a81fb6.js",revision:"5d6a3bd385a81fb6"},{url:"/_next/static/chunks/main-app-35a8f7113c40fc8e.js",revision:"35a8f7113c40fc8e"},{url:"/_next/static/chunks/next/dist/client/components/builtin/app-error-f3c3aa4c8e468f83.js",revision:"f3c3aa4c8e468f83"},{url:"/_next/static/chunks/next/dist/client/components/builtin/forbidden-f3c3aa4c8e468f83.js",revision:"f3c3aa4c8e468f83"},{url:"/_next/static/chunks/next/dist/client/components/builtin/global-error-3d545eb46c8ada1d.js",revision:"3d545eb46c8ada1d"},{url:"/_next/static/chunks/next/dist/client/components/builtin/not-found-f3c3aa4c8e468f83.js",revision:"f3c3aa4c8e468f83"},{url:"/_next/static/chunks/next/dist/client/components/builtin/unauthorized-f3c3aa4c8e468f83.js",revision:"f3c3aa4c8e468f83"},{url:"/_next/static/chunks/polyfills-42372ed130431b0a.js",revision:"846118c33b2c0e922d7b3a7676f81f6f"},{url:"/_next/static/chunks/webpack-13e1bab762670976.js",revision:"13e1bab762670976"},{url:"/_next/static/css/0961bd431e974a21.css",revision:"0961bd431e974a21"},{url:"/_next/static/kGwrbnR8phXuH9rL0_IvN/_buildManifest.js",revision:"4945bb6bed0bb584037e01a939c35ed8"},{url:"/_next/static/kGwrbnR8phXuH9rL0_IvN/_ssgManifest.js",revision:"b6652df95db52feb4daf4eca35380933"},{url:"/file.svg",revision:"d09f95206c3fa0bb9bd9fefabfd0ea71"},{url:"/globe.svg",revision:"2aaafa6a49b6563925fe440891e32717"},{url:"/next.svg",revision:"8e061864f388b47f33a1c3780831193e"},{url:"/vercel.svg",revision:"c0af2f507b369b085b35ef4bbe3bcf1e"},{url:"/window.svg",revision:"a2760511c65806022ad20adf74370ff3"}],{ignoreURLParametersMatching:[]}),e.cleanupOutdatedCaches(),e.registerRoute("/",new e.NetworkFirst({cacheName:"start-url",plugins:[{cacheWillUpdate:async({request:e,response:s,event:n,state:t})=>s&&"opaqueredirect"===s.type?new Response(s.body,{status:200,statusText:"OK",headers:s.headers}):s}]}),"GET"),e.registerRoute(/^https:\/\/fonts\.(?:gstatic)\.com\/.*/i,new e.CacheFirst({cacheName:"google-fonts-webfonts",plugins:[new e.ExpirationPlugin({maxEntries:4,maxAgeSeconds:31536e3})]}),"GET"),e.registerRoute(/^https:\/\/fonts\.(?:googleapis)\.com\/.*/i,new e.StaleWhileRevalidate({cacheName:"google-fonts-stylesheets",plugins:[new e.ExpirationPlugin({maxEntries:4,maxAgeSeconds:604800})]}),"GET"),e.registerRoute(/\.(?:eot|otf|ttc|ttf|woff|woff2|font.css)$/i,new e.StaleWhileRevalidate({cacheName:"static-font-assets",plugins:[new e.ExpirationPlugin({maxEntries:4,maxAgeSeconds:604800})]}),"GET"),e.registerRoute(/\.(?:jpg|jpeg|gif|png|svg|ico|webp)$/i,new e.StaleWhileRevalidate({cacheName:"static-image-assets",plugins:[new e.ExpirationPlugin({maxEntries:64,maxAgeSeconds:86400})]}),"GET"),e.registerRoute(/\/_next\/image\?url=.+$/i,new e.StaleWhileRevalidate({cacheName:"next-image",plugins:[new e.ExpirationPlugin({maxEntries:64,maxAgeSeconds:86400})]}),"GET"),e.registerRoute(/\.(?:mp3|wav|ogg)$/i,new e.CacheFirst({cacheName:"static-audio-assets",plugins:[new e.RangeRequestsPlugin,new e.ExpirationPlugin({maxEntries:32,maxAgeSeconds:86400})]}),"GET"),e.registerRoute(/\.(?:mp4)$/i,new e.CacheFirst({cacheName:"static-video-assets",plugins:[new e.RangeRequestsPlugin,new e.ExpirationPlugin({maxEntries:32,maxAgeSeconds:86400})]}),"GET"),e.registerRoute(/\.(?:js)$/i,new e.StaleWhileRevalidate({cacheName:"static-js-assets",plugins:[new e.ExpirationPlugin({maxEntries:32,maxAgeSeconds:86400})]}),"GET"),e.registerRoute(/\.(?:css|less)$/i,new e.StaleWhileRevalidate({cacheName:"static-style-assets",plugins:[new e.ExpirationPlugin({maxEntries:32,maxAgeSeconds:86400})]}),"GET"),e.registerRoute(/\/_next\/data\/.+\/.+\.json$/i,new e.StaleWhileRevalidate({cacheName:"next-data",plugins:[new e.ExpirationPlugin({maxEntries:32,maxAgeSeconds:86400})]}),"GET"),e.registerRoute(/\.(?:json|xml|csv)$/i,new e.NetworkFirst({cacheName:"static-data-assets",plugins:[new e.ExpirationPlugin({maxEntries:32,maxAgeSeconds:86400})]}),"GET"),e.registerRoute(({url:e})=>{if(!(self.origin===e.origin))return!1;const s=e.pathname;return!s.startsWith("/api/auth/")&&!!s.startsWith("/api/")},new e.NetworkFirst({cacheName:"apis",networkTimeoutSeconds:10,plugins:[new e.ExpirationPlugin({maxEntries:16,maxAgeSeconds:86400})]}),"GET"),e.registerRoute(({url:e})=>{if(!(self.origin===e.origin))return!1;return!e.pathname.startsWith("/api/")},new e.NetworkFirst({cacheName:"others",networkTimeoutSeconds:10,plugins:[new e.ExpirationPlugin({maxEntries:32,maxAgeSeconds:86400})]}),"GET"),e.registerRoute(({url:e})=>!(self.origin===e.origin),new e.NetworkFirst({cacheName:"cross-origin",networkTimeoutSeconds:10,plugins:[new e.ExpirationPlugin({maxEntries:32,maxAgeSeconds:3600})]}),"GET")});
+// Authored service worker: cache the listening space, never external recordings
+// or API responses. Navigation is network-first so deployments stay current.
+const SHELL_CACHE = "sms-shell-v1";
+const ASSET_CACHE = "sms-assets-v1";
+const MAX_ASSETS = 180;
+const FALLBACK_ART = "/images/playlist-night.webp";
+
+function isAsset(url) {
+  return (
+    url.origin === self.location.origin &&
+    (url.pathname.startsWith("/_next/static/") ||
+      url.pathname.startsWith("/images/") ||
+      [
+        "/icon.svg",
+        "/icon-192.png",
+        "/icon-512.png",
+        "/favicon.ico",
+        "/manifest.json",
+      ].includes(url.pathname))
+  );
+}
+
+async function storeAsset(request, response) {
+  if (!response.ok) return;
+  try {
+    const copy = response.clone();
+    const cache = await caches.open(ASSET_CACHE);
+    await cache.put(request, copy);
+    const keys = await cache.keys();
+    if (keys.length > MAX_ASSETS) await cache.delete(keys[0]);
+  } catch {
+    // Storage quotas and private browsing must not interrupt network requests.
+  }
+}
+
+async function precache() {
+  const response = await fetch("/", { cache: "reload" });
+  if (!response.ok) throw new Error("The app shell is not available yet");
+  const shell = await caches.open(SHELL_CACHE);
+  await shell.put("/", response.clone());
+  const html = await response.text();
+  const assets = new Set([
+    FALLBACK_ART,
+    "/manifest.json",
+    "/icon.svg",
+    "/icon-192.png",
+    "/icon-512.png",
+  ]);
+  for (const match of html.matchAll(/(?:src|href)=["']([^"']+)["']/g)) {
+    const url = new URL(match[1], self.location.origin);
+    if (isAsset(url)) assets.add(url.href);
+  }
+  await Promise.all(
+    [...assets].map(async (asset) => {
+      const result = await fetch(asset, { cache: "reload" });
+      if (
+        !result.ok &&
+        new URL(asset, self.location.origin).pathname.startsWith(
+          "/_next/static/",
+        )
+      ) {
+        throw new Error("A required app asset is not available yet");
+      }
+      await storeAsset(asset, result);
+      if (result.headers.get("content-type")?.includes("text/css")) {
+        const css = await result.text();
+        const fonts = [...css.matchAll(/url\(["']?([^"')]+)["']?\)/g)]
+          .map(
+            (match) => new URL(match[1], new URL(asset, self.location.origin)),
+          )
+          .filter((url) => isAsset(url) && /\.woff2?$/.test(url.pathname));
+        await Promise.all(
+          fonts.map(async (url) => {
+            const font = await fetch(url, { cache: "reload" });
+            await storeAsset(url.href, font);
+          }),
+        );
+      }
+    }),
+  );
+}
+
+self.addEventListener("install", (event) => {
+  event.waitUntil(precache().then(() => self.skipWaiting()));
+});
+
+self.addEventListener("activate", (event) => {
+  event.waitUntil(
+    (async () => {
+      const keys = await caches.keys();
+      await Promise.all(
+        keys
+          .filter(
+            (key) =>
+              key.startsWith("sms-") &&
+              key !== SHELL_CACHE &&
+              key !== ASSET_CACHE,
+          )
+          .map((key) => caches.delete(key)),
+      );
+      await self.clients.claim();
+    })(),
+  );
+});
+
+self.addEventListener("fetch", (event) => {
+  const request = event.request;
+  const url = new URL(request.url);
+  if (
+    request.method !== "GET" ||
+    url.origin !== self.location.origin ||
+    request.headers.has("range") ||
+    url.pathname.startsWith("/api/")
+  )
+    return;
+
+  if (request.mode === "navigate") {
+    event.respondWith(
+      (async () => {
+        try {
+          const response = await fetch(request);
+          if (response.ok && url.pathname === "/") {
+            const copy = response.clone();
+            event.waitUntil(
+              caches
+                .open(SHELL_CACHE)
+                .then((cache) => cache.put("/", copy))
+                .catch(() => {}),
+            );
+          }
+          return response;
+        } catch {
+          return (
+            (await caches
+              .open(SHELL_CACHE)
+              .then((cache) => cache.match("/"))) ??
+            new Response("Reconnect to open SMS Music.", {
+              status: 503,
+              headers: { "Content-Type": "text/plain" },
+            })
+          );
+        }
+      })(),
+    );
+    return;
+  }
+
+  if (isAsset(url)) {
+    event.respondWith(
+      (async () => {
+        const cache = await caches.open(ASSET_CACHE);
+        const cached = await cache.match(request);
+        if (cached) return cached;
+        try {
+          const response = await fetch(request);
+          event.waitUntil(storeAsset(request, response));
+          return response;
+        } catch {
+          if (request.destination === "image")
+            return (await cache.match(FALLBACK_ART)) ?? Response.error();
+          return Response.error();
+        }
+      })(),
+    );
+  }
+});

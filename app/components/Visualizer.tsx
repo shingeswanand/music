@@ -1,30 +1,17 @@
 "use client";
 
-type Props = {
-  isPlaying: boolean;
-};
-
-export default function Visualizer({
-  isPlaying,
-}: Props) {
-
+export default function Visualizer({ isPlaying }: { isPlaying: boolean }) {
   return (
-    <div className="flex items-end gap-[4px] h-10">
-
-      {[...Array(20)].map(
-        (_, index) => (
-
+    <div
+      className={`visualizer ${isPlaying ? "visualizer-playing" : ""}`}
+      aria-hidden="true"
+    >
+      {Array.from({ length: 24 }, (_, index) => (
         <span
           key={index}
-
-          className={`w-[4px] rounded-full bg-green-500 ${
-            isPlaying
-              ? "animate-music-bar"
-              : "h-2"
-          }`}
           style={{
-            animationDelay:
-              `${index * 0.1}s`,
+            animationDelay: `${index * 0.09}s`,
+            height: `${18 + ((index * 31) % 75)}%`,
           }}
         />
       ))}

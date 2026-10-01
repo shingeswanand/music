@@ -1,62 +1,71 @@
 "use client";
 
-import SongCard
-from "./SongCard";
+import { FiPlay, FiPause, FiHeart } from "react-icons/fi";
+import { usePlayer } from "../context/PlayerContext";
+import { formatTime, type Song } from "../lib/types";
+import Artwork from "./Artwork";
 
-import {
-  usePlayer,
-} from "../context/PlayerContext";
+type Props = { songs: Song[] };
 
-type Props = {
-  songs: any[];
-};
-
-export default function RecentlyPlayed({
-  songs,
-}: Props) {
-
+export default function RecentlyPlayed({ songs }: Props) {
   const {
-    setSongs,
-    setCurrentSong,
-    setIsPlaying,
+    currentSong,
+    isPlaying,
+    playSong,
+    togglePlay,
+    favorites,
+    toggleFavorite,
   } = usePlayer();
-
-  // PLAY SONG
-  const handlePlaySong = (
-    song: any
-  ) => {
-
-    // SET CURRENT QUEUE
-    setSongs(songs);
-
-    // PLAY CLICKED SONG
-    setCurrentSong(song);
-
-    setIsPlaying(true);
-  };
-
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
-
-      {songs
-        .slice(0, 4)
-        .map((song) => (
-
-        <div
-          key={song.id}
-
-          onClick={() =>
-            handlePlaySong(song)
-          }
-
-          className="cursor-pointer hover:scale-[1.02] transition-transform duration-300"
-        >
-          <SongCard
-            song={song}
-          />
-        </div>
-
-      ))}
+    <div className="track-list">
+      <div className="track-list-header">
+        <span>#</span>
+        <span>Title</span>
+        <span className="track-album">Album</span>
+        <span /> <span>Time</span>
+      </div>
+      {songs.map((song, index) => {
+        const active = currentSong.id === song.id && isPlaying;
+        const liked = favorites.some((item) => item.id === song.id);
+        return (
+          <div
+            className={`track-row ${active ? "track-row-active" : ""}`}
+            key={song.id}
+          >
+            <button
+              type="button"
+              className="track-number"
+              aria-label={`${active ? "Pause" : "Play"} ${song.title}`}
+              onClick={() => (active ? togglePlay() : playSong(song, songs))}
+            >
+              <span>{index + 1}</span>
+              {active ? <FiPause /> : <FiPlay />}
+            </button>
+            <button
+              type="button"
+              className="track-name"
+              onClick={() => (active ? togglePlay() : playSong(song, songs))}
+            >
+              <Artwork src={song.image} alt="" />
+              <span>
+                <strong>{song.title}</strong>
+                <span>{song.artist}</span>
+              </span>
+            </button>
+            <span className="track-album">{song.album}</span>
+            <button
+              type="button"
+              className={`icon-button ${liked ? "liked" : ""}`}
+              aria-label={`${liked ? "Unlike" : "Like"} ${song.title}`}
+              aria-pressed={liked}
+              onClick={() => toggleFavorite(song)}
+            >
+              <FiHeart />
+            </button>
+            <span className="track-duration">{formatTime(song.duration)}</span>
+          </div>
+        );
+      })}
     </div>
   );
 }

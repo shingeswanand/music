@@ -1,13 +1,36 @@
+import { FiArrowUpRight } from "react-icons/fi";
+import type { ReactNode } from "react";
+
 type Props = {
   title: string;
+  subtitle?: string;
+  action?: () => void;
+  actionLabel?: string;
+  icon?: ReactNode;
 };
 
 export default function SectionTitle({
   title,
+  subtitle,
+  action,
+  actionLabel = "View all",
+  icon,
 }: Props) {
   return (
-    <h2 className="text-3xl font-bold mb-6 mt-10">
-      {title}
-    </h2>
+    <div className="section-heading">
+      <div>
+        <h2>
+          {icon}
+          <span>{title}</span>
+        </h2>
+        {subtitle && <p>{subtitle}</p>}
+      </div>
+      {action && (
+        <button type="button" className="text-link" onClick={action}>
+          {actionLabel}
+          <FiArrowUpRight />
+        </button>
+      )}
+    </div>
   );
 }
