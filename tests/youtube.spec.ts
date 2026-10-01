@@ -3,14 +3,18 @@ import {
   cleanChannel,
   cleanTitle,
   invidiousProvider,
+  parseClockDuration,
+  parseInnertubeSearch,
   parseInvidiousSearch,
   parseIsoDuration,
+  parseMirrorList,
   parsePipedSearch,
   parseYouTubeApiSearch,
   pipedProvider,
   rankVideos,
   songsFromVideos,
   toSong,
+  youTubeInnertubeProvider,
 } from "../app/lib/youtube";
 
 /**
@@ -277,4 +281,80 @@ test("mirror request URLs are built for each API shape", () => {
   expect(pipedProvider("api.piped.private.coffee").url("kesariya")).toBe(
     "https://api.piped.private.coffee/search?q=kesariya&filter=videos",
   );
+  const innertube = youTubeInnertubeProvider();
+  expect(innertube.url("kesariya")).toBe(
+    "https://www.youtube.com/youtubei/v1/search?prettyPrint=false",
+  );
+  expect(innertube.init?.("kesariya")?.method).toBe("POST");
+  expect(parseMirrorList("innertube:https://www.youtube.com")[0].id).toBe(
+    "www.youtube.com",
+  );
+});
+
+test("YouTube Innertube search payload is parsed with clock durations and badges", () => {
+  const videos = parseInnertubeSearch({
+    contents: {
+      twoColumnSearchResultsRenderer: {
+        primaryContents: {
+          sectionListRenderer: {
+            contents: [
+              {
+                itemSectionRenderer: {
+                  contents: [
+                    {
+                      videoRenderer: {
+                        videoId: "BddP6PYo2gs",
+                        title: {
+                          runs: [{ text: "Kesariya - Brahmāstra" }],
+                        },
+                        ownerText: {
+                          runs: [{ text: "Sony Music India" }],
+                        },
+                        lengthText: { simpleText: "2:53" },
+                        viewCountText: { simpleText: "620,737,318 views" },
+                        ownerBadges: [
+                          {
+                            metadataBadgeRenderer: {
+                              style: "BADGE_STYLE_TYPE_VERIFIED",
+                            },
+                          },
+                        ],
+                      },
+                    },
+                    {
+                      videoRenderer: {
+                        videoId: "LIVE1234567",
+                        title: { simpleText: "Kesariya Live Radio" },
+                        ownerText: { simpleText: "Radio" },
+                        badges: [
+                          {
+                            metadataBadgeRenderer: {
+                              style: "BADGE_STYLE_TYPE_LIVE_NOW",
+                            },
+                          },
+                        ],
+                      },
+                    },
+                  ],
+                },
+              },
+            ],
+          },
+        },
+      },
+    },
+  });
+  expect(videos).toHaveLength(2);
+  expect(videos[0]).toMatchObject({
+    videoId: "BddP6PYo2gs",
+    title: "Kesariya - Brahmāstra",
+    channel: "Sony Music India",
+    duration: 173,
+    views: 620737318,
+    verified: true,
+    live: false,
+  });
+  expect(videos[1].live).toBe(true);
+  expect(parseClockDuration("1:02:03")).toBe(3723);
+  expect(parseClockDuration("invalid")).toBe(0);
 });

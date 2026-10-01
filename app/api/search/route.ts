@@ -181,6 +181,7 @@ export async function GET(request: Request) {
       songs,
       source: "apple",
       live: true,
+      clientFallback: !disabled,
     } satisfies SearchResponse);
   } catch {
     // An outage is not a successful empty search; the UI explains the difference.

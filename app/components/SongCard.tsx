@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import {
+  FiArrowUpRight,
   FiHeart,
   FiMoreHorizontal,
   FiPlay,
@@ -125,6 +126,21 @@ export default function SongCard({ song, queue, rank, playlistId }: Props) {
                   <FiList />
                   Add to queue
                 </button>
+                {song.externalUrl && (
+                  <a
+                    href={song.externalUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={() => setMenuOpen(false)}
+                  >
+                    <FiArrowUpRight />
+                    <span>
+                      {song.previewUrl
+                        ? "Listen to the full track"
+                        : "Open on YouTube"}
+                    </span>
+                  </a>
+                )}
                 {playlists.length > 0 && <p>Add to playlist</p>}
                 {playlists.map((playlist) => (
                   <button

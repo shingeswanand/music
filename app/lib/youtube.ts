@@ -38,6 +38,8 @@ export type YouTubeProvider = {
   base: string;
   /** Builds the search request for a query. */
   url: (query: string) => string;
+  /** Optional request options, used by POST-based endpoints like Innertube. */
+  init?: (query: string) => RequestInit;
   /** Turns a provider payload into videos. May fetch extra details. */
   parse: (
     payload: unknown,
@@ -98,6 +100,43 @@ export function pipedProvider(baseUrl: string): YouTubeProvider {
 }
 
 /**
+ * YouTube's own Innertube JSON search endpoint (server-only, since youtube.com
+ * does not send browser CORS headers). Works without an API key.
+ */
+export function youTubeInnertubeProvider(
+  baseUrl = "https://www.youtube.com",
+): YouTubeProvider {
+  const base = trimBase(baseUrl);
+  return {
+    id: new URL(base).host || "www.youtube.com",
+    base,
+    url() {
+      return `${base}/youtubei/v1/search?prettyPrint=false`;
+    },
+    init(query) {
+      return {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          context: {
+            client: {
+              clientName: "WEB",
+              clientVersion: "2.20250101.00.00",
+              hl: "en",
+              gl: "IN",
+            },
+          },
+          query,
+          // Video filter ("sp=EgIQAQ==").
+          params: "EgIQAQ==",
+        }),
+      };
+    },
+    parse: parseInnertubeSearch,
+  };
+}
+
+/**
  * Public mirrors. The first entries are the ones this app has verified to
  * answer search requests; the rest are community instances used as fallbacks.
  * Mirrors come and go, so this list is the one place to update them.
@@ -125,11 +164,13 @@ export function parseMirrorList(value: string): YouTubeProvider[] {
     .map((entry) => entry.trim())
     .filter(Boolean)
     .flatMap((entry) => {
-      const match = entry.match(/^(invidious|piped)\s*:\s*(.+)$/i);
+      const match = entry.match(/^(invidious|piped|innertube)\s*:\s*(.+)$/i);
       const kind = match?.[1].toLowerCase() ?? "";
       const target = match?.[2] ?? entry;
       try {
         const apiPath = new URL(trimBase(target)).pathname;
+        if (kind === "innertube" || (!kind && apiPath.includes("/youtubei/")))
+          return [youTubeInnertubeProvider(target)];
         const invidious =
           kind === "invidious" || (!kind && apiPath.includes("/api/v1"));
         return [
@@ -143,9 +184,11 @@ export function parseMirrorList(value: string): YouTubeProvider[] {
 
 export function configuredProviders() {
   const override = process.env.MUSIC_YOUTUBE_MIRRORS?.trim();
-  if (!override) return PROVIDERS;
-  const parsed = parseMirrorList(override);
-  return parsed.length ? parsed : PROVIDERS;
+  if (override) {
+    const parsed = parseMirrorList(override);
+    if (parsed.length) return parsed;
+  }
+  return [youTubeInnertubeProvider(), ...PROVIDERS];
 }
 
 export const PROVIDER_HOSTS = PROVIDERS.map(
@@ -284,6 +327,96 @@ export function parseIsoDuration(value: unknown) {
     Number(minutes ?? 0) * 60 +
     Number(seconds ?? 0)
   );
+}
+
+/** Clock durations such as "2:53" or "1:02:03", as returned by Innertube. */
+export function parseClockDuration(value: unknown) {
+  const text = asText(value);
+  if (!/^\d+(?::\d{1,2}){1,2}$/.test(text)) return 0;
+  return text
+    .split(":")
+    .reduce((total, part) => total * 60 + Number(part), 0);
+}
+
+function readRunsText(value: unknown): string {
+  if (typeof value === "string") return value.trim();
+  const record = asRecord(value);
+  if (!record) return "";
+  if (typeof record.simpleText === "string") return record.simpleText.trim();
+  if (Array.isArray(record.runs)) {
+    return record.runs
+      .map((run) => asText(asRecord(run)?.text))
+      .join("")
+      .trim();
+  }
+  return "";
+}
+
+function collectVideoRenderers(
+  node: unknown,
+  found: Record<string, unknown>[] = [],
+): Record<string, unknown>[] {
+  if (Array.isArray(node)) {
+    for (const child of node) collectVideoRenderers(child, found);
+    return found;
+  }
+  const record = asRecord(node);
+  if (!record) return found;
+  const renderer = asRecord(record.videoRenderer);
+  if (renderer && typeof renderer.videoId === "string") {
+    found.push(renderer);
+    return found;
+  }
+  for (const value of Object.values(record)) {
+    if (value && typeof value === "object") collectVideoRenderers(value, found);
+  }
+  return found;
+}
+
+/** YouTube Innertube (`/youtubei/v1/search`) response parser. */
+export function parseInnertubeSearch(payload: unknown): YouTubeVideo[] {
+  return collectVideoRenderers(payload).flatMap((renderer) => {
+    const videoId = asText(renderer.videoId);
+    const title = readRunsText(renderer.title);
+    const channel =
+      readRunsText(renderer.ownerText) ||
+      readRunsText(renderer.longBylineText) ||
+      readRunsText(renderer.shortBylineText);
+    const duration = parseClockDuration(readRunsText(renderer.lengthText));
+    const viewText = readRunsText(renderer.viewCountText);
+    const views = Number(viewText.replace(/[^\d]/g, "")) || 0;
+    const ownerBadges = Array.isArray(renderer.ownerBadges)
+      ? renderer.ownerBadges
+      : [];
+    const verified = ownerBadges.some((badge) => {
+      const style = asText(asRecord(asRecord(badge)?.metadataBadgeRenderer)?.style);
+      return style.includes("VERIFIED");
+    });
+    const badges = Array.isArray(renderer.badges) ? renderer.badges : [];
+    const overlays = Array.isArray(renderer.thumbnailOverlays)
+      ? renderer.thumbnailOverlays
+      : [];
+    const live =
+      badges.some(
+        (badge) =>
+          asText(asRecord(asRecord(badge)?.metadataBadgeRenderer)?.style) ===
+          "BADGE_STYLE_TYPE_LIVE_NOW",
+      ) ||
+      overlays.some(
+        (overlay) =>
+          asText(
+            asRecord(asRecord(overlay)?.thumbnailOverlayTimeStatusRenderer)
+              ?.style,
+          ) === "LIVE",
+      ) ||
+      (!duration && /\bwatching\b/i.test(viewText));
+    const video = makeVideo(videoId, title, channel, duration, {
+      views,
+      verified,
+      live,
+    });
+    return video ? [video] : [];
+  });
 }
 
 export function normalizeText(value: string) {
@@ -446,9 +579,11 @@ async function requestProvider(
   timeoutMs: number,
 ) {
   const composed = withTimeout(signal, timeoutMs);
+  const extra = provider.init?.(query);
   const response = await fetch(provider.url(query), {
+    ...extra,
     signal: composed,
-    headers: { accept: "application/json" },
+    headers: { accept: "application/json", ...extra?.headers },
     cache: "no-store",
   });
   if (!response.ok)
