@@ -10,6 +10,7 @@ import {
 import {
   FiArrowUpRight,
   FiDisc,
+  FiEdit2,
   FiHeart,
   FiMusic,
   FiPlay,
@@ -34,24 +35,23 @@ import SectionTitle from "./components/SectionTitle";
 import SkeletonCard from "./components/SkeletonCard";
 import Dialog from "./components/Dialog";
 import Artwork from "./components/Artwork";
+import DiscoveryStatus from "./components/DiscoveryStatus";
+import DiscoveryTracks from "./components/DiscoveryTracks";
+import { useDiscovery } from "./context/DiscoveryContext";
+import { useStoredValue } from "./lib/storage";
+import { isDiscoveryCategory } from "./lib/discovery";
 import { usePlayer } from "./context/PlayerContext";
-import {
-  CATEGORIES,
-  CURATED_PLAYLISTS,
-  SONGS,
-  getPlaylistSongs,
-} from "./lib/catalogue";
+import { CATEGORIES } from "./lib/catalogue";
 import { searchSongs } from "./lib/api";
-import type { Category, SearchResponse, Song, View } from "./lib/types";
+import {
+  collectionSourceLabel,
+  sourceLabel,
+  type SearchResponse,
+  type Song,
+  type View,
+} from "./lib/types";
 
 type SearchState = SearchResponse & { loading: boolean; error?: string };
-
-/** Where the results on screen came from. */
-function sourceLabel(source: SearchResponse["source"]) {
-  if (source === "youtube") return "Streaming in full from YouTube";
-  if (source === "apple") return "Official previews available";
-  return "From your handpicked catalogue";
-}
 
 export default function Home() {
   const [history, setHistory] = useState<{ entries: View[]; index: number }>({
@@ -60,9 +60,20 @@ export default function Home() {
   });
   const view = history.entries[history.index];
   const [query, setQuery] = useState("");
-  const [category, setCategory] = useState<Category>("For you");
+  const [storedCategory, setCategory] = useStoredValue<unknown>(
+    "sms-category",
+    "For you",
+  );
+  const category = isDiscoveryCategory(storedCategory)
+    ? storedCategory
+    : "For you";
+  const { feeds, mixStates, mixes, loadCategory, loadMix, dailySongs } =
+    useDiscovery();
+  const discovery = feeds[category];
   const [mobileOpen, setMobileOpen] = useState(false);
   const [creatingPlaylist, setCreatingPlaylist] = useState(false);
+  const [editingPlaylist, setEditingPlaylist] = useState(false);
+  const mixIntent = useRef(0);
   const [playlistName, setPlaylistName] = useState("");
   const [deletingPlaylist, setDeletingPlaylist] = useState(false);
   const [searches, setSearches] = useState<Record<string, SearchState>>({});
@@ -73,14 +84,18 @@ export default function Home() {
     playlists,
     playSong,
     setShuffle,
+    setRepeat,
     createPlaylist,
+    renamePlaylist,
     addToPlaylist,
     deletePlaylist,
     currentSong,
+    getPlaybackIntent,
     notify,
   } = usePlayer();
 
   const navigate = useCallback((next: View) => {
+    mixIntent.current++;
     setHistory((previous) => {
       const current = previous.entries[previous.index];
       if (
@@ -142,28 +157,40 @@ export default function Home() {
     }
   };
 
-  const filteredSongs =
-    category === "For you"
-      ? SONGS
-      : SONGS.filter((song) => song.categories.includes(category));
+  const filteredSongs = discovery?.data?.songs ?? [];
+  const artists = discovery?.data?.artists ?? [];
   const curatedPlaylist =
     view.type === "playlist"
-      ? CURATED_PLAYLISTS.find((playlist) => playlist.id === view.id)
+      ? mixes.find((playlist) => playlist.id === view.id)
       : undefined;
   const personalPlaylist =
     view.type === "playlist"
       ? playlists.find((playlist) => playlist.id === view.id)
       : undefined;
+  const mixResource = curatedPlaylist
+    ? mixStates[curatedPlaylist.id]
+    : undefined;
   const collectionSongs: Song[] =
     view.type === "favorites"
       ? favorites
       : view.type === "recent"
         ? recentSongs
         : curatedPlaylist
-          ? getPlaylistSongs(curatedPlaylist)
+          ? (mixResource?.data?.songs ?? [])
           : (personalPlaylist?.songs ?? []);
   const search = searches[view.query ?? ""];
   const isCollection = ["favorites", "recent", "playlist"].includes(view.type);
+  const collectionLoading = !!curatedPlaylist && !mixResource?.data;
+
+  useEffect(() => {
+    if (view.type === "home" || view.type === "discover")
+      void loadCategory(category).catch(() => undefined);
+  }, [category, view.type, loadCategory]);
+
+  useEffect(() => {
+    if (view.type === "playlist" && curatedPlaylist)
+      void loadMix(curatedPlaylist.id).catch(() => undefined);
+  }, [view.type, curatedPlaylist, loadMix]);
 
   const headings: Record<
     View["type"],
@@ -181,7 +208,7 @@ export default function Home() {
     },
     radio: {
       title: "Find your frequency.",
-      subtitle: "Handpicked listening sessions. Pick a mood and settle in.",
+      subtitle: "Fresh listening sessions. Pick a mood and settle in.",
       kicker: "LET THE MUSIC TAKE OVER",
     },
     favorites: {
@@ -199,9 +226,7 @@ export default function Home() {
       subtitle:
         curatedPlaylist?.description ??
         "Your songs. Your order. Your own little world.",
-      kicker: curatedPlaylist
-        ? "SMS SELECTS · CURATED WITH CARE"
-        : "MADE BY YOU",
+      kicker: curatedPlaylist ? "FRESH MUSIC FOR YOUR MOMENT" : "MADE BY YOU",
     },
     search: {
       title: `Results for “${view.query ?? ""}”`,
@@ -219,13 +244,45 @@ export default function Home() {
       songs,
     );
   };
+  const playMix = async (id: string, station = false) => {
+    const intent = ++mixIntent.current;
+    const playbackIntent = getPlaybackIntent();
+    try {
+      const result = await loadMix(id);
+      if (
+        intent !== mixIntent.current ||
+        playbackIntent !== getPlaybackIntent()
+      )
+        return;
+      if (!result.songs.length) {
+        notify(
+          "No tracks in this mix yet. Try refreshing or choose another mood.",
+        );
+        return;
+      }
+      if (station) setRepeat("all");
+      startMix(result.songs, station);
+      if (station)
+        notify(
+          `${mixes.find((mix) => mix.id === id)?.name ?? "Your station"} is now playing`,
+        );
+    } catch {
+      if (intent === mixIntent.current)
+        notify("Couldn’t load that mix. Please try again.");
+    }
+  };
   const submitPlaylist = (event: FormEvent) => {
     event.preventDefault();
     if (!playlistName.trim()) return;
-    const id = createPlaylist(playlistName);
-    setCreatingPlaylist(false);
+    if (editingPlaylist && personalPlaylist) {
+      renamePlaylist(personalPlaylist.id, playlistName);
+      setEditingPlaylist(false);
+    } else {
+      const id = createPlaylist(playlistName);
+      setCreatingPlaylist(false);
+      openPlaylist(id);
+    }
     setPlaylistName("");
-    openPlaylist(id);
   };
 
   return (
@@ -272,7 +329,9 @@ export default function Home() {
             {view.type === "home" && (
               <span className="made-for-you">
                 <FiStar />
-                Handpicked for you
+                {favorites.length || recentSongs.length
+                  ? "Inspired by your listening"
+                  : "Fresh discoveries"}
               </span>
             )}
             {view.type === "search" && (
@@ -313,19 +372,36 @@ export default function Home() {
 
           {view.type === "home" && (
             <>
-              <HeroBanner onExplore={openPlaylist} />
+              <DiscoveryStatus
+                resource={discovery}
+                onRefresh={() =>
+                  void loadCategory(category, true).catch(() => undefined)
+                }
+              />
+              <HeroBanner
+                onExplore={openPlaylist}
+                onPlayMix={(id) => void playMix(id)}
+              />
               <section className="music-section">
                 <SectionTitle
                   title={
                     category === "For you"
-                      ? "On everyone’s repeat"
+                      ? "Your next rotation"
                       : `${category}, on repeat`
                   }
-                  subtitle="The tracks worth coming back to."
+                  subtitle={
+                    discovery?.data
+                      ? collectionSourceLabel(filteredSongs)
+                      : "Finding the tracks worth coming back to."
+                  }
                   icon={<FiTrendingUp />}
                   action={() => navigate({ type: "discover" })}
                 />
-                <TrendingSongs songs={filteredSongs.slice(0, 6)} ranked />
+                <DiscoveryTracks
+                  songs={filteredSongs.slice(0, 6)}
+                  loading={!discovery?.data}
+                  ranked
+                />
               </section>
               <section className="music-section">
                 <SectionTitle
@@ -344,6 +420,7 @@ export default function Home() {
                   actionLabel="Explore artists"
                 />
                 <TopArtists
+                  artists={artists}
                   onArtistClick={(artist) => void runSearch(artist)}
                 />
               </section>
@@ -362,6 +439,12 @@ export default function Home() {
 
           {view.type === "discover" && (
             <>
+              <DiscoveryStatus
+                resource={discovery}
+                onRefresh={() =>
+                  void loadCategory(category, true).catch(() => undefined)
+                }
+              />
               <section className="music-section browse-section">
                 <SectionTitle
                   title={
@@ -369,11 +452,14 @@ export default function Home() {
                       ? "The good stuff"
                       : `${category} essentials`
                   }
-                  subtitle={`${filteredSongs.length} handpicked tracks to explore.`}
+                  subtitle={`${filteredSongs.length} tracks to explore · ${discovery?.data ? sourceLabel(discovery.data.source) : "Connecting…"}`}
                   action={() => startMix(filteredSongs, true)}
                   actionLabel="Shuffle play"
                 />
-                <TrendingSongs songs={filteredSongs} />
+                <DiscoveryTracks
+                  songs={filteredSongs}
+                  loading={!discovery?.data}
+                />
               </section>
               <section className="music-section">
                 <SectionTitle
@@ -381,6 +467,7 @@ export default function Home() {
                   subtitle="Tap an artist to explore their sound."
                 />
                 <TopArtists
+                  artists={artists}
                   onArtistClick={(artist) => void runSearch(artist)}
                 />
               </section>
@@ -400,33 +487,36 @@ export default function Home() {
                 <div>
                   <h2>Less scrolling. More listening.</h2>
                   <p>Pick a station. We’ll take care of the next song.</p>
-                  <span>Curated sessions · Official track previews</span>
+                  <span>Fresh tracklists · Shuffle and repeat enabled</span>
                 </div>
               </div>
               <div className="station-grid">
-                {CURATED_PLAYLISTS.map((playlist, index) => {
-                  const songs = getPlaylistSongs(playlist);
+                {mixes.map((playlist, index) => {
+                  const resource = mixStates[playlist.id];
                   return (
                     <button
                       type="button"
                       className="station-card"
                       key={playlist.id}
-                      onClick={() => {
-                        startMix(songs, true);
-                        notify(`${playlist.name} is now playing`);
-                      }}
+                      disabled={resource?.loading || resource?.checkingLive}
+                      aria-label={`Play ${playlist.name} station`}
+                      onClick={() => void playMix(playlist.id, true)}
                     >
                       <Artwork src={playlist.image} alt="" />
                       <span className="station-shade" />
                       <span className="station-top">
                         <FiRadio />
-                        STATION 0{index + 1}
+                        STATION {String(index + 1).padStart(2, "0")}
                       </span>
                       <span className="station-text">
                         <strong>{playlist.name}</strong>
                         <span>{playlist.description}</span>
                         <small>
-                          {songs.length} tracks · Press play, stay a while
+                          {resource?.loading || resource?.checkingLive
+                            ? "Finding fresh tracks…"
+                            : resource?.data
+                              ? `${resource.data.songs.length} tracks · ${resource.data.live ? "Live selection" : "Offline picks"}`
+                              : "Fresh tracks loaded when you press play"}
                         </small>
                       </span>
                       <span className="station-play">
@@ -444,7 +534,11 @@ export default function Home() {
                 <button
                   type="button"
                   className="surprise-card"
-                  onClick={() => startMix(SONGS, true)}
+                  disabled={!dailySongs.length}
+                  onClick={() => {
+                    setRepeat("all");
+                    startMix(dailySongs, true);
+                  }}
                 >
                   <FiShuffle />
                   <span>
@@ -483,7 +577,7 @@ export default function Home() {
                         <FiWifiOff />
                         <span>
                           {search.error ??
-                            "Live search is temporarily unavailable. Your handpicked catalogue is still here."}
+                            "Live search is temporarily unavailable. Your offline catalogue is still here."}
                         </span>
                         <button
                           type="button"
@@ -561,14 +655,22 @@ export default function Home() {
                       : "A SOUNDTRACK OF YOUR OWN"}
                   </span>
                   <h2>
-                    {collectionSongs.length}{" "}
-                    {collectionSongs.length === 1 ? "song" : "songs"}.{" "}
-                    {view.type === "favorites" ? "All heart." : "All yours."}
+                    {collectionLoading ? (
+                      "Loading your mix…"
+                    ) : (
+                      <>
+                        {collectionSongs.length}{" "}
+                        {collectionSongs.length === 1 ? "song" : "songs"}.{" "}
+                        {view.type === "favorites"
+                          ? "All heart."
+                          : "All yours."}
+                      </>
+                    )}
                   </h2>
                   <p>
                     {view.type === "recent"
                       ? "Your last 30 listens, saved on this device."
-                      : "Official previews. Full tracks are a click away."}
+                      : collectionSourceLabel(collectionSongs)}
                   </p>
                   <div className="collection-actions">
                     <button
@@ -590,19 +692,47 @@ export default function Home() {
                       Shuffle
                     </button>
                     {personalPlaylist && (
-                      <button
-                        type="button"
-                        className="icon-button"
-                        aria-label="Delete this playlist"
-                        onClick={() => setDeletingPlaylist(true)}
-                      >
-                        <FiTrash2 />
-                      </button>
+                      <>
+                        <button
+                          type="button"
+                          className="icon-button"
+                          aria-label="Rename this playlist"
+                          onClick={() => {
+                            setPlaylistName(personalPlaylist.name);
+                            setEditingPlaylist(true);
+                          }}
+                        >
+                          <FiEdit2 />
+                        </button>
+                        <button
+                          type="button"
+                          className="icon-button"
+                          aria-label="Delete this playlist"
+                          onClick={() => setDeletingPlaylist(true)}
+                        >
+                          <FiTrash2 />
+                        </button>
+                      </>
                     )}
                   </div>
                 </div>
               </section>
-              {collectionSongs.length ? (
+              {curatedPlaylist && (
+                <DiscoveryStatus
+                  resource={mixResource}
+                  refreshLabel="Refresh this mix"
+                  onRefresh={() =>
+                    void loadMix(curatedPlaylist.id, true).catch(
+                      () => undefined,
+                    )
+                  }
+                />
+              )}
+              {collectionLoading ? (
+                <section className="music-section">
+                  <DiscoveryTracks songs={[]} loading />
+                </section>
+              ) : collectionSongs.length ? (
                 <section className="music-section">
                   <SectionTitle
                     title={
@@ -647,7 +777,7 @@ export default function Home() {
                         : "Add songs using a track’s three-dot menu, or start with your current pick."}
                   </p>
                   <div className="empty-actions">
-                    {personalPlaylist && (
+                    {personalPlaylist && currentSong && (
                       <button
                         type="button"
                         className="primary-button"
@@ -680,21 +810,29 @@ export default function Home() {
               <FiMusic />
               Made for the moments in between.
             </span>
-            <span>Official previews · Your library stays on this device</span>
+            <span>
+              Full YouTube tracks & official previews · Saved on this device
+            </span>
           </footer>
         </main>
       </div>
-      {creatingPlaylist && (
+      {(creatingPlaylist || editingPlaylist) && (
         <Dialog
-          label="Create a playlist"
+          label={editingPlaylist ? "Rename playlist" : "Create a playlist"}
           className="create-dialog"
-          onClose={() => setCreatingPlaylist(false)}
+          onClose={() => {
+            setCreatingPlaylist(false);
+            setEditingPlaylist(false);
+            setPlaylistName("");
+          }}
         >
           <span className="dialog-art">
             <FiMusic />
           </span>
           <p className="eyebrow">MAKE IT YOURS</p>
-          <h2>A mix of your own.</h2>
+          <h2>
+            {editingPlaylist ? "Give it a new name." : "A mix of your own."}
+          </h2>
           <p>For the songs that feel like you.</p>
           <form onSubmit={submitPlaylist}>
             <label htmlFor="playlist-name">Playlist name</label>
@@ -712,7 +850,7 @@ export default function Home() {
               disabled={!playlistName.trim()}
             >
               <FiPlus />
-              Create playlist
+              {editingPlaylist ? "Save name" : "Create playlist"}
             </button>
           </form>
         </Dialog>

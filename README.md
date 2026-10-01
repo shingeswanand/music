@@ -1,6 +1,6 @@
 # SMS Music
 
-A warm, responsive music discovery app built with Next.js 16 and React 19. Search anything and play full songs from YouTube, browse a handpicked Hindi and Marathi catalogue, and build a personal listening library.
+A responsive music discovery app built with Next.js 16 and React 19. Home, Browse, artists, mixes, radio and search are driven by provider responses—not fixed demo track lists. Build a personal listening library and stream full YouTube tracks or official Apple Music previews.
 
 ## Run locally
 
@@ -9,53 +9,79 @@ npm ci
 npm run dev -- --hostname 0.0.0.0
 ```
 
-Open http://localhost:3000. **No API keys or separate backend are needed.** The included `server/` folder is the legacy YouTube search service; the app talks to YouTube through its own same-origin `/api/search` route instead.
+Open http://localhost:3000. **No API keys or separate backend are required.** The app uses its own same-origin `/api/discover` and `/api/search` routes. The included `server/` folder is an unused legacy search service.
 
 ## What works
 
-- Curated discovery, Hindi/Marathi and mood filters, artist search, and listening stations
-- Live search: any song, artist, or album streams in full from YouTube, with real titles, durations, and artwork
-- Handpicked catalogue results whenever a live search cannot be reached
-- Native audio playback with progress, seeking, next/previous, shuffle, repeat, volume, and mute
-- Persistent liked songs, the last 30 listening selections, volume, and personal playlists
-- Create playlists, add/remove tracks through their action menus, and delete with confirmation
-- Editable playback queue and an expanded now-playing view
-- Mobile navigation, focus-trapped native dialogs, reduced-motion support, and keyboard shortcuts
-- Media Session controls and installable PWA with real application icons and an offline listening-space shell
+- Live home/browse feeds with Hindi, Marathi, Indie, Chill and Party selections
+- Artist names, artwork and track counts derived from the current feed
+- On-demand mix and station tracklists, with refresh controls and real loading/empty/error states
+- A Daily Mix personalized by liked songs and listening history, with a reproducible daily order
+- Live song/artist/album search, full YouTube uploads, and official previews when YouTube is unavailable
+- Real playback: progress, seeking, next/previous, shuffle, repeat, volume and mute
+- Persistent likes, last 30 listening selections, playlists, display name and category preference
+- Playlist creation, renaming, reordering, adding/removing tracks and confirmed deletion
+- Track action menus on discovery cards, liked songs, listening history and mixes
+- Editable queue and expanded now-playing view; chosen song, queue and playback modes restored **paused** after reload
+- Mobile navigation, focus-trapped dialogs, keyboard shortcuts and reduced-motion support
+- Media Session controls and an installable PWA with an offline listening-space shell
 
-### Playback and search
+## Data and playback
 
-**Search is live.** Every query goes to YouTube and the results are real songs: full uploads, real titles, real durations, and real thumbnails. Nothing about a search result is hard-coded — the grid on the search screen is whatever YouTube has for that query right now. Results that are not music (news clips, trailers, interviews, reactions, live streams, Shorts, and 5-second teasers) are filtered out, and titles are tidied up for display. Full songs play through a hidden YouTube player, so the player badge reads **YouTube** and the actions menu links to `youtube.com`.
+### Discovery is live
 
-The app does not have a private YouTube key, so the search route asks public, CORS-enabled YouTube mirrors instead — [Invidious](https://invidious.io) and [Piped](https://piped.video) instances. It walks them server-side until one answers; if the host this app runs on has no route to YouTube (a sandboxed preview or a locked-down network), the **browser** retries the same search directly against the mirrors, because the listener's network usually can reach them even when the server's cannot. Only when no mirror answers does search fall back to the bundled catalogue, and the app says so rather than passing off catalogue tracks as live results.
+`GET /api/discover?category=Hindi` requests fresh provider results for that selection. The default **For you** feed combines Hindi, Marathi and Indian indie requests, deduplicates tracks, and derives its artist and mood cards from those tracks.
 
-Home, Discover, and the curated stations still use the **handpicked catalogue**, whose entries are **official Apple Music preview URLs** rather than full recordings. The player shows a Preview badge for those, reads the actual clip duration, and links to the full track at its provider. Old YouTube favorites are migrated and can still play through the YouTube player.
+`GET /api/discover?mix=late-night` loads the selected mix's own query. The four editorial themes define names, mood queries and fallback artwork, **not fixed song IDs**. Featured mixes, mood cards, sidebar mixes and radio share the same resource state. Stations enable repeating shuffle playback of the returned tracklist; they are not broadcast radio streams.
 
-Queries typed in the browser may be sent to a public mirror (never to an account or an ad network), and audio streams straight from YouTube when a song plays. Both need an internet connection.
+The browser keeps each category/mix result for five minutes to avoid duplicate provider requests. **Refresh** bypasses that cache and asks again without interrupting playback or replacing a queue you have edited. Delayed responses are isolated by category/mix; newer playback choices take precedence over pending station requests.
 
-Your library is stored only in this browser's local storage. It is not an account or cloud-synced library. Corrupt or unavailable storage is handled safely; blocked writes fall back to session memory.
+### Providers and truthful fallbacks
 
-### Search configuration
+The routes prefer full songs from YouTube, using public [Invidious](https://invidious.io) and [Piped](https://piped.video) mirrors or an optional official YouTube Data API key. Music filtering removes news, trailers, interviews, reactions, live streams, Shorts and teasers. Apple Music's public search API supplies live metadata, artwork and rights-holder preview URLs when YouTube cannot be reached.
 
-Search works with no configuration. These optional environment variables tune it:
+If the deployment's network is blocked, the browser retries the public providers from the listener's network. Only when live providers cannot be reached does the app use the bundled offline catalogue. The screen explicitly says **Offline catalogue** or **Partly live** instead of presenting bundled content as live. A provider's successful empty result stays empty.
 
-| Variable                    | What it does                                                                                                                                                  |
-| --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `YOUTUBE_API_KEY`           | Ask the official YouTube Data API v3 first. Set it on the server for the most reliable, highest-quota results; the public mirrors remain the fallback.         |
-| `MUSIC_YOUTUBE_MIRRORS`     | Replace the public mirror list on the server, e.g. `piped:https://pipedapi.example.com,invidious:https://invidious.example.com`. Bare URLs default to Piped.   |
-| `MUSIC_DISABLE_LIVE_SEARCH` | `1` keeps this deployment on the curated catalogue only (no YouTube requests from the server or the browser).                                                  |
+Full songs use the YouTube player and a **YouTube** badge. Apple previews use native audio and a **Preview** badge, read the actual clip duration, and link to the full track. Track availability and YouTube embedding permissions are controlled by the provider; neither full streaming nor preview availability can be guaranteed during an outage.
 
-The mirror list lives in `app/lib/youtube.ts`. Public instances come and go, so that list is the one place to update them.
+**Internet access is required for live discovery and recordings.** The PWA can reopen its listening-space shell and browse the offline catalogue, but it does not cache or bundle recordings. Search terms and discovery mood queries may be sent to public providers.
 
-### Keyboard shortcuts
+### Your library
 
-| Shortcut       | Action                                             |
-| -------------- | -------------------------------------------------- |
-| Ctrl / Cmd + K | Focus search                                       |
-| Space          | Play / pause, outside interactive controls         |
-| Left / Right   | Seek by five seconds, outside interactive controls |
-| M              | Mute / unmute, outside interactive controls        |
-| Escape         | Close the active dialog                            |
+Library, profile and playback-session data are saved in this browser's local storage, not an account or a cloud database. Library and profile changes synchronize between tabs; active playback stays independent so another tab cannot interrupt your song. Malformed data is validated, old YouTube favorites are migrated, and blocked storage writes fall back to session memory. Reloading never starts playback automatically.
+
+## Provider configuration
+
+Configuration is optional; server credentials are never sent to the browser.
+
+| Variable                       | Purpose                                                                                                                                             |
+| ------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `YOUTUBE_API_KEY`              | Use the official YouTube Data API v3 first; public mirrors remain the fallback.                                                                     |
+| `MUSIC_YOUTUBE_MIRRORS`        | Override the server mirror list, e.g. `piped:https://pipedapi.example.com,invidious:https://invidious.example.com`. Bare URLs default to Piped.     |
+| `MUSIC_APPLE_API_URL`          | Override the server's Apple-compatible API base URL; defaults to `https://itunes.apple.com`. Useful for a self-hosted proxy or deterministic tests. |
+| `MUSIC_DISABLE_LIVE_DISCOVERY` | `1` keeps discovery/mixes/stations on the labelled offline catalogue; live search remains available.                                                |
+| `MUSIC_DISABLE_LIVE_SEARCH`    | `1` disables all live provider requests for both search and discovery, including browser retries.                                                   |
+
+The public mirror list lives in `app/lib/youtube.ts`. Category queries, editorial themes, derived cards and Daily Mix logic live in `app/lib/discovery.ts`. The shared server provider adapter is `app/lib/server-music.ts`.
+
+## Demo walkthrough
+
+1. Open Home and check the live/fallback status. Refresh to fetch a new selection.
+2. Pick a language or mood; browse or search for a song and press play.
+3. Like a track and return Home: the Daily Mix now reflects your selection.
+4. Use a track's action menu to create a playlist, then rename it and move tracks earlier/later.
+5. Start a radio station and open the queue to inspect its fetched, repeating shuffle tracklist.
+6. Edit your display name from the profile menu and reload: the library, chosen queue and profile persist, with playback paused.
+
+## Keyboard shortcuts
+
+| Shortcut       | Action                                            |
+| -------------- | ------------------------------------------------- |
+| Ctrl / Cmd + K | Focus search                                      |
+| Space          | Play / pause outside interactive controls         |
+| Left / Right   | Seek by five seconds outside interactive controls |
+| M              | Mute / unmute outside interactive controls        |
+| Escape         | Close the active dialog or track menu             |
 
 ## Quality checks
 
@@ -67,11 +93,13 @@ npx playwright install chromium
 npm test
 ```
 
-Browser tests cover discovery, live search, mirror outages, language filters, playback, queues, persistence, playlist management, malformed/blocked storage, mobile layouts, keyboard/dialog behavior, and automated accessibility checks. Stop any development server and run `TEST_PRODUCTION=1 npm test` to also verify the production PWA and offline catalogue search.
+Tests cover provider payload validation, live discovery adapters, refreshes, late responses, empty feeds, partial outages, browser retries, personalization, playback, persistence, playlist management, malformed/blocked storage, mobile menus and automated accessibility checks.
 
-Tests never depend on a public mirror: `playwright.config.ts` points the server at a local mock mirror, the browser's mirror requests are intercepted, and `tests/youtube.spec.ts` exercises parsing, filtering, and ranking against real (trimmed) Invidious and Piped payloads. Set `MUSIC_YOUTUBE_MIRRORS` to a real instance to run the suite against live search instead. The test runner will build and start a production server if one is not already running. Tests use a generated silent WAV fixture for deterministic audio assertions; no recordings are downloaded or bundled.
+Tests never depend on public providers. `playwright.config.ts` points the routes at local YouTube and Apple test doubles; browser provider requests are intercepted. Existing library/playback tests use an explicit offline discovery fixture, while dynamic-screen tests supply changing provider responses. Silent WAV fixtures exercise real browser audio; no recordings are downloaded or bundled.
 
-To use an existing Chromium installation, set `CHROMIUM_EXECUTABLE_PATH`. The lightweight authored service worker caches the app shell, fonts, and artwork in production. It never caches search API responses or external recordings. Service-worker registration is disabled in development. The dev server allows Arena's `*.e2b.app` preview origins.
+Stop any development server and run `TEST_PRODUCTION=1 npm test` to also verify production PWA/offline behavior. The test runner builds and starts production in that mode; otherwise it uses the development server. To use an existing Chromium installation, set `CHROMIUM_EXECUTABLE_PATH`.
+
+The authored service worker caches the app shell, fonts and local artwork in production, never API responses or recordings. Registration is disabled in development. The dev server accepts Arena's `*.e2b.app` preview origins.
 
 ## Artwork and fonts
 

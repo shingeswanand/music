@@ -3,7 +3,7 @@ import { PROVIDER_HOSTS } from "../app/lib/youtube";
 
 /**
  * Live search talks to public YouTube mirrors. Browser tests never rely on
- * those third parties: they are blocked by default so a test result is the
+ * those third parties (or the Apple preview fallback): they are blocked by default so a test result is the
  * same on a laptop, in CI and in a sandbox without internet access.
  */
 export const mirrorPattern = (url: URL) =>
@@ -11,6 +11,9 @@ export const mirrorPattern = (url: URL) =>
 
 export async function blockLiveMirrors(page: Page) {
   await page.route(mirrorPattern, (route) => route.abort("failed"));
+  await page.route("https://itunes.apple.com/search**", (route) =>
+    route.abort("failed"),
+  );
 }
 
 /** A trimmed, real Invidious search response for "kesariya song". */

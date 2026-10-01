@@ -1,15 +1,16 @@
 "use client";
 
 import { FiArrowUpRight, FiMusic } from "react-icons/fi";
-import { CURATED_PLAYLISTS } from "../lib/catalogue";
+import { useDiscovery } from "../context/DiscoveryContext";
 import Artwork from "./Artwork";
 
 type Props = { onAlbumClick: (id: string) => void };
 
 export default function Albums({ onAlbumClick }: Props) {
+  const { mixes } = useDiscovery();
   return (
     <div className="mood-grid">
-      {CURATED_PLAYLISTS.map((playlist) => (
+      {mixes.map((playlist) => (
         <button
           type="button"
           key={playlist.id}
@@ -20,7 +21,7 @@ export default function Albums({ onAlbumClick }: Props) {
           <span className="mood-shade" />
           <span className="mood-card-label">
             <FiMusic />
-            SMS SELECTS
+            {playlist.category.toUpperCase()} MIX
           </span>
           <span className="mood-card-bottom">
             <strong>{playlist.name}</strong>
