@@ -59,6 +59,17 @@ test("live YouTube results render as full songs, not previews", async ({
     "Kesariya - Brahmāstra",
   );
   await expect(page.locator(".player-song")).toContainText("YOUTUBE");
+
+  // The song card actions menu links straight to YouTube.
+  await page
+    .getByRole("button", {
+      name: "More actions for Kesariya - Brahmāstra",
+      exact: true,
+    })
+    .click();
+  await expect(
+    page.getByRole("link", { name: "Open on YouTube", exact: true }),
+  ).toHaveAttribute("href", "https://www.youtube.com/watch?v=BddP6PYo2gs");
 });
 
 test("the browser retries live search when the server cannot reach YouTube", async ({

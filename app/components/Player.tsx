@@ -403,7 +403,11 @@ function ActivePlayer({ currentSong }: { currentSong: Song }) {
               width="1px"
               height="1px"
               playsinline
-              loop={repeat === "one"}
+              loop={repeat === "one" || (repeat === "all" && songs.length === 1)}
+              onReady={() => updatePlayback({ ready: true, waiting: false })}
+              onPlay={() => updatePlayback({ error: undefined, waiting: false })}
+              onBuffer={() => updatePlayback({ waiting: true })}
+              onBufferEnd={() => updatePlayback({ waiting: false })}
               onProgress={(state) =>
                 updatePlayback({ seconds: state.playedSeconds })
               }

@@ -1314,7 +1314,8 @@ a {
   box-shadow: 0 12px 40px #0005;
   padding: 6px;
 }
-.song-dropdown button {
+.song-dropdown button,
+.song-dropdown a {
   padding: 9px;
   display: flex;
   width: 100%;
@@ -1327,11 +1328,13 @@ a {
   color: #c4c9b2;
   font-size: 10px;
 }
-.song-dropdown button:hover {
+.song-dropdown button:hover,
+.song-dropdown a:hover {
   background: #ffffff08;
   color: var(--accent);
 }
-.song-dropdown button > span {
+.song-dropdown button > span,
+.song-dropdown a > span {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;

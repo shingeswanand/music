@@ -186,9 +186,14 @@ export default function TrackActions({ song, playlistId }: Props) {
               href={song.externalUrl}
               target="_blank"
               rel="noopener noreferrer"
+              onClick={() => setOpen(false)}
             >
               <FiArrowUpRight />
-              {song.previewUrl ? "Listen to the full track" : "Open on YouTube"}
+              <span>
+                {song.previewUrl
+                  ? "Listen to the full track"
+                  : "Open on YouTube"}
+              </span>
             </a>
           )}
         </div>
