@@ -1,4 +1,11 @@
 import { test, expect, type Page } from "@playwright/test";
+import { blockLiveMirrors } from "./live-mirrors";
+
+// Live YouTube search is a third-party dependency: tests drive those responses
+// themselves, so mirrors are blocked unless a test opts back in.
+test.beforeEach(async ({ page }) => {
+  await blockLiveMirrors(page);
+});
 
 // A silent PCM fixture exercises real browser audio, without relying on the
 // availability of a third-party preview or downloading copyrighted recordings.
@@ -563,7 +570,11 @@ test("search API validates input and accepts the old q parameter", async ({
   const response = await request.get("/api/search?q=Kesariya");
   expect(response.status()).toBe(200);
   const data = await response.json();
+  // The test mirror is down for this query: the route reports a fallback it
+  // can explain, not an invented live result.
   expect(data.source).toBe("catalogue");
+  expect(data.live).toBe(false);
+  expect(data.clientFallback).toBe(true);
   expect(data.songs[0].title).toBe("Kesariya");
   expect(data.songs[0].previewUrl).toMatch(/^https:/);
 });

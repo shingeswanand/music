@@ -1,5 +1,12 @@
 export type Category =
-  "For you" | "Hindi" | "Marathi" | "Indie" | "Chill" | "Party";
+  | "For you"
+  | "Hindi"
+  | "Marathi"
+  | "Indie"
+  | "Chill"
+  | "Party"
+  // Live search results: streamed from YouTube rather than a short preview.
+  | "YouTube";
 
 export type Song = {
   id: string;
@@ -50,7 +57,18 @@ export type View = {
 
 export type SearchResponse = {
   songs: Song[];
-  source: "catalogue" | "apple" | "offline";
+  source: "youtube" | "catalogue" | "apple" | "offline";
+  /**
+   * True when a live provider answered this exact query. False means the server
+   * could not reach YouTube, so the results are a bundled fallback.
+   */
+  live?: boolean;
+  /**
+   * Set when the browser itself may retry the search against public YouTube
+   * mirrors (the server had no route to a live provider).
+   */
+  clientFallback?: boolean;
+  error?: string;
 };
 
 export function isSong(value: unknown): value is Song {

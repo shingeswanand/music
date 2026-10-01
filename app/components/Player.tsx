@@ -110,11 +110,15 @@ export default function Player() {
 
   const playbackError = useCallback(() => {
     updatePlayback({
-      error: "This preview isn’t available right now.",
+      // A preview is a 30s provider clip; a YouTube result is the full video,
+      // which can also fail when the uploader disabled embedding.
+      error: currentSong.previewUrl
+        ? "This preview isn’t available right now."
+        : "This track can’t play here right now.",
       waiting: false,
     });
     setIsPlaying(false);
-  }, [updatePlayback, setIsPlaying]);
+  }, [currentSong.previewUrl, updatePlayback, setIsPlaying]);
 
   useEffect(() => {
     const audio = audioRef.current;
@@ -400,7 +404,9 @@ export default function Player() {
                 target="_blank"
                 rel="noopener noreferrer"
               >
-                Listen to the full track
+                {currentSong.previewUrl
+                  ? "Listen to the full track"
+                  : "Open on YouTube"}
                 <FiArrowUpRight />
               </a>
             )}
@@ -515,7 +521,7 @@ export default function Player() {
               <span className="now-playing-preview">
                 {currentSong.previewUrl
                   ? "Official track preview"
-                  : "YouTube playback"}
+                  : "Streaming in full from YouTube"}
               </span>
               <h2>{currentSong.title}</h2>
               <p>{currentSong.artist}</p>
@@ -577,7 +583,9 @@ export default function Player() {
                   target="_blank"
                   rel="noopener noreferrer"
                 >
-                  Listen to the full track
+                  {currentSong.previewUrl
+                    ? "Listen to the full track"
+                    : "Open on YouTube"}
                   <FiArrowUpRight />
                 </a>
               )}
