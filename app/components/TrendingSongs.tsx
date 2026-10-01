@@ -1,59 +1,25 @@
 "use client";
 
-import SongCard
-from "./SongCard";
+import type { Song } from "../lib/types";
+import SongCard from "./SongCard";
 
-import {
-  usePlayer,
-} from "../context/PlayerContext";
-
-type Props = {
-  songs: any[];
-};
+type Props = { songs: Song[]; ranked?: boolean; playlistId?: string };
 
 export default function TrendingSongs({
   songs,
+  ranked = false,
+  playlistId,
 }: Props) {
-
-  const {
-    setSongs,
-    setCurrentSong,
-    setIsPlaying,
-  } = usePlayer();
-
-  // PLAY SONG
-  const handlePlaySong = (
-    song: any
-  ) => {
-
-    // SET CURRENT PLAY QUEUE
-    setSongs(songs);
-
-    // PLAY CLICKED SONG
-    setCurrentSong(song);
-
-    setIsPlaying(true);
-  };
-
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
-
-      {songs.map((song) => (
-
-        <div
+    <div className="song-grid">
+      {songs.map((song, index) => (
+        <SongCard
           key={song.id}
-
-          onClick={() =>
-            handlePlaySong(song)
-          }
-
-          className="cursor-pointer hover:scale-[1.02] transition-transform duration-300"
-        >
-          <SongCard
-            song={song}
-          />
-        </div>
-
+          song={song}
+          queue={songs}
+          rank={ranked ? index + 1 : undefined}
+          playlistId={playlistId}
+        />
       ))}
     </div>
   );

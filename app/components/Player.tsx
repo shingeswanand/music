@@ -1,472 +1,659 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import {
+  useCallback,
+  useEffect,
   useRef,
   useState,
+  type CSSProperties,
 } from "react";
-import { useEffect } from "react";
-import ReactPlayer
-from "react-player";
-
+import type ReactPlayerType from "react-player";
 import {
-  FaPlay,
-  FaPause,
-  FaStepForward,
-  FaStepBackward,
-  FaVolumeUp,
-  FaExpand,
-  FaCompress,
-} from "react-icons/fa";
+  FiArrowUpRight,
+  FiCheck,
+  FiHeart,
+  FiList,
+  FiMaximize2,
+  FiPause,
+  FiPlay,
+  FiRepeat,
+  FiShuffle,
+  FiSkipBack,
+  FiSkipForward,
+  FiVolume2,
+  FiVolumeX,
+  FiX,
+} from "react-icons/fi";
+import { usePlayer } from "../context/PlayerContext";
+import { useStoredValue } from "../lib/storage";
+import { formatTime } from "../lib/types";
+import Artwork from "./Artwork";
+import Dialog from "./Dialog";
+import Visualizer from "./Visualizer";
+import { Brand } from "./Sidebar";
 
-import { usePlayer }
-from "../context/PlayerContext";
-
-import Visualizer
-from "./Visualizer";
+const YouTubePlayer = dynamic(() => import("react-player"), { ssr: false });
+type Playback = {
+  id: string;
+  seconds: number;
+  duration: number;
+  error?: string;
+  waiting?: boolean;
+  ready?: boolean;
+};
+const sliderStyle = (fraction: number): CSSProperties => ({
+  background: `linear-gradient(to right, var(--accent) ${Math.min(100, Math.max(0, fraction * 100))}%, #3b3b35 0%)`,
+});
 
 export default function Player() {
-
-  const playerRef =
-    useRef<any>(null);
-
   const {
     currentSong,
     isPlaying,
     setIsPlaying,
+    togglePlay,
+    playSong,
     playNextSong,
     playPrevSong,
+    songs,
+    setSongs,
+    favorites,
+    toggleFavorite,
+    shuffle,
+    setShuffle,
+    repeat,
+    cycleRepeat,
   } = usePlayer();
+  const audioRef = useRef<HTMLAudioElement>(null);
+  const youtubeRef = useRef<ReactPlayerType | null>(null);
+  const [playback, setPlayback] = useState<Playback>({
+    id: currentSong.id,
+    seconds: 0,
+    duration: currentSong.previewUrl ? 30 : currentSong.duration,
+  });
+  const [storedVolume, setVolume] = useStoredValue("sms-volume", 0.7);
+  const volume =
+    typeof storedVolume === "number" && Number.isFinite(storedVolume)
+      ? Math.max(0, Math.min(1, storedVolume))
+      : 0.7;
+  const previousVolume = useRef(0.7);
+  const [expanded, setExpanded] = useState(false);
+  const [queueOpen, setQueueOpen] = useState(false);
+  const validPlayback = playback.id === currentSong.id;
+  const seconds = validPlayback ? playback.seconds : 0;
+  const duration = validPlayback
+    ? playback.duration
+    : currentSong.previewUrl
+      ? 30
+      : currentSong.duration;
+  const error = validPlayback ? playback.error : undefined;
+  const waiting = validPlayback && playback.waiting;
+  const canSeek = validPlayback && playback.ready;
+  const liked = favorites.some((song) => song.id === currentSong.id);
+  const currentIndex = songs.findIndex((song) => song.id === currentSong.id);
 
-useEffect(() => {
-  if (!currentSong) return;
+  const updatePlayback = useCallback(
+    (update: Partial<Playback>) => {
+      setPlayback((previous) => ({
+        ...(previous.id === currentSong.id
+          ? previous
+          : {
+              id: currentSong.id,
+              seconds: 0,
+              duration: currentSong.previewUrl ? 30 : currentSong.duration,
+            }),
+        ...update,
+      }));
+    },
+    [currentSong.id, currentSong.previewUrl, currentSong.duration],
+  );
 
-  if ("mediaSession" in navigator) {
-    navigator.mediaSession.metadata =
-      new MediaMetadata({
-        title: currentSong.title,
-        artist:
-          currentSong.channelTitle || "Unknown",
-        artwork: [
-          {
-            src:
-              currentSong.thumbnail?.thumbnails?.[0]
-                ?.url || "",
-            sizes: "512x512",
-            type: "image/jpeg",
-          },
-        ],
-      });
+  const playbackError = useCallback(() => {
+    updatePlayback({
+      error: "This preview isn’t available right now.",
+      waiting: false,
+    });
+    setIsPlaying(false);
+  }, [updatePlayback, setIsPlaying]);
 
-    navigator.mediaSession.setActionHandler(
-      "play",
-      async () => {
-        setIsPlaying(true);
-      }
-    );
-
-    navigator.mediaSession.setActionHandler(
-      "pause",
-      () => {
-        setIsPlaying(false);
-      }
-    );
-
-    navigator.mediaSession.setActionHandler(
-      "nexttrack",
-      () => {
-        playNextSong();
-      }
-    );
-
-    navigator.mediaSession.setActionHandler(
-      "previoustrack",
-      () => {
-        playPrevSong();
-      }
-    );
-  }
-}, [currentSong, isPlaying]);
-
-  const [played, setPlayed] =
-    useState(0);
-
-  const [duration, setDuration] =
-    useState<number>(0);
-
-  const [volume, setVolume] =
-    useState(0.8);
-
-  const [expanded, setExpanded] =
-    useState(false);
-
-  if (!currentSong) return null;
-
-  const videoUrl =
-    `https://www.youtube.com/watch?v=${currentSong.id}`;
-
-  // FORMAT TIME
-  const formatTime = (
-    seconds: number
-  ) => {
-
-    if (
-      !seconds ||
-      isNaN(seconds)
-    ) {
-      return "0:00";
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio || !currentSong.previewUrl) return;
+    if (!isPlaying) {
+      audio.pause();
+      return;
     }
+    if (audio.ended) audio.currentTime = 0;
+    audio.play().catch((cause: unknown) => {
+      if (
+        audio !== audioRef.current ||
+        (cause instanceof DOMException && cause.name === "AbortError")
+      )
+        return;
+      if (cause instanceof DOMException && cause.name === "NotAllowedError") {
+        updatePlayback({
+          error: "Tap play to start listening.",
+          waiting: false,
+        });
+        setIsPlaying(false);
+      } else playbackError();
+    });
+  }, [
+    currentSong.id,
+    currentSong.previewUrl,
+    isPlaying,
+    playbackError,
+    setIsPlaying,
+    updatePlayback,
+  ]);
 
-    const mins =
-      Math.floor(seconds / 60);
+  useEffect(() => {
+    if (audioRef.current) audioRef.current.volume = volume;
+  }, [volume, currentSong.id]);
 
-    const secs =
-      Math.floor(seconds % 60);
+  const seek = useCallback(
+    (position: number) => {
+      const target = Math.max(
+        0,
+        Math.min(position, Math.max(0, duration - 0.05)),
+      );
+      if (currentSong.previewUrl) {
+        const audio = audioRef.current;
+        if (!audio || !Number.isFinite(audio.duration)) return;
+        audio.currentTime = target;
+      } else {
+        if (!youtubeRef.current) return;
+        youtubeRef.current.seekTo(target, "seconds");
+      }
+      updatePlayback({ seconds: target });
+    },
+    [duration, currentSong.previewUrl, updatePlayback],
+  );
 
-    return `${mins}:${
-      secs < 10 ? "0" : ""
-    }${secs}`;
-  };
+  const previous = useCallback(() => {
+    const elapsed = currentSong.previewUrl
+      ? (audioRef.current?.currentTime ?? 0)
+      : (youtubeRef.current?.getCurrentTime() ?? 0);
+    if (elapsed > 3 || currentIndex <= 0) seek(0);
+    else playPrevSong();
+  }, [currentSong.previewUrl, currentIndex, playPrevSong, seek]);
+
+  const mute = useCallback(() => {
+    if (volume > 0) {
+      previousVolume.current = volume;
+      setVolume(0);
+    } else setVolume(previousVolume.current || 0.7);
+  }, [volume, setVolume]);
+
+  useEffect(() => {
+    const handler = (event: KeyboardEvent) => {
+      const target = event.target;
+      if (
+        target instanceof HTMLElement &&
+        target.closest(
+          "input, textarea, select, button, a, [contenteditable=true]",
+        )
+      )
+        return;
+      if (event.metaKey || event.ctrlKey || event.altKey) return;
+      if (event.code === "Space") {
+        event.preventDefault();
+        togglePlay();
+      }
+      if (event.key.toLowerCase() === "m") mute();
+      if (event.key === "ArrowRight" || event.key === "ArrowLeft") {
+        event.preventDefault();
+        const position = currentSong.previewUrl
+          ? (audioRef.current?.currentTime ?? 0)
+          : (youtubeRef.current?.getCurrentTime() ?? 0);
+        seek(position + (event.key === "ArrowRight" ? 5 : -5));
+      }
+    };
+    document.addEventListener("keydown", handler);
+    return () => document.removeEventListener("keydown", handler);
+  }, [togglePlay, mute, seek, currentSong.previewUrl]);
+
+  useEffect(() => {
+    if (!("mediaSession" in navigator) || typeof MediaMetadata === "undefined")
+      return;
+    navigator.mediaSession.metadata = new MediaMetadata({
+      title: currentSong.title,
+      artist: currentSong.artist,
+      album: currentSong.album,
+      artwork: [
+        {
+          src: new URL(currentSong.image, window.location.origin).href,
+          sizes: "500x500",
+        },
+      ],
+    });
+    const handlers: [MediaSessionAction, MediaSessionActionHandler][] = [
+      ["play", () => playSong(currentSong)],
+      ["pause", () => setIsPlaying(false)],
+      ["previoustrack", previous],
+      ["nexttrack", playNextSong],
+      [
+        "seekto",
+        (details) => {
+          if (details.seekTime !== undefined) seek(details.seekTime);
+        },
+      ],
+    ];
+    handlers.forEach(([action, handler]) => {
+      try {
+        navigator.mediaSession.setActionHandler(action, handler);
+      } catch {
+        /* Not all browsers support every media action. */
+      }
+    });
+    return () =>
+      handlers.forEach(([action]) => {
+        try {
+          navigator.mediaSession.setActionHandler(action, null);
+        } catch {
+          /* Unsupported browser action. */
+        }
+      });
+  }, [currentSong, playSong, setIsPlaying, previous, playNextSong, seek]);
+
+  useEffect(() => {
+    if ("mediaSession" in navigator)
+      navigator.mediaSession.playbackState = isPlaying ? "playing" : "paused";
+  }, [isPlaying]);
+
+  const controls = (
+    <div className="transport-controls">
+      <button
+        type="button"
+        className={`icon-button shuffle-button ${shuffle ? "control-active" : ""}`}
+        aria-label="Shuffle"
+        title="Shuffle"
+        aria-pressed={shuffle}
+        onClick={() => setShuffle((previous) => !previous)}
+      >
+        <FiShuffle />
+      </button>
+      <button
+        type="button"
+        className="icon-button skip-button"
+        aria-label="Previous track"
+        title="Previous track"
+        onClick={previous}
+      >
+        <FiSkipBack />
+      </button>
+      <button
+        type="button"
+        className={`main-play-button ${waiting && isPlaying ? "is-buffering" : ""}`}
+        aria-label={isPlaying ? "Pause playback" : "Play playback"}
+        title={isPlaying ? "Pause (Space)" : "Play (Space)"}
+        onClick={() => {
+          updatePlayback({ error: undefined });
+          togglePlay();
+        }}
+      >
+        {isPlaying ? <FiPause /> : <FiPlay />}
+      </button>
+      <button
+        type="button"
+        className="icon-button skip-button"
+        aria-label="Next track"
+        title="Next track"
+        onClick={playNextSong}
+      >
+        <FiSkipForward />
+      </button>
+      <button
+        type="button"
+        className={`icon-button repeat-button ${repeat !== "off" ? "control-active" : ""}`}
+        aria-label={`Repeat: ${repeat}`}
+        title={`Repeat: ${repeat}`}
+        aria-pressed={repeat !== "off"}
+        onClick={cycleRepeat}
+      >
+        <FiRepeat />
+        {repeat === "one" && <span>1</span>}
+      </button>
+    </div>
+  );
+
+  const progress = (
+    <div className="player-progress">
+      <span>{formatTime(seconds)}</span>
+      <input
+        type="range"
+        aria-label="Seek playback"
+        aria-valuetext={`${formatTime(seconds)} of ${formatTime(duration)}`}
+        min={0}
+        max={duration || 30}
+        disabled={!canSeek}
+        step={0.1}
+        value={Math.min(seconds, duration || 30)}
+        onChange={(event) => seek(Number(event.target.value))}
+        style={sliderStyle(duration ? seconds / duration : 0)}
+      />
+      <span>{formatTime(duration)}</span>
+    </div>
+  );
 
   return (
     <>
-      {/* HIDDEN PLAYER */}
-      <div className="absolute opacity-0 pointer-events-none">
-
-        <ReactPlayer
-  ref={playerRef}
-  url={videoUrl}
-  playing={isPlaying}
-  controls={false}
-  width="1px"
-  height="1px"
-  volume={volume}
-  playsinline={true}
-  pip={true}
-  config={{
-    youtube: {
-      playerVars: {
-        autoplay: 1,
-        controls: 0,
-        modestbranding: 1,
-        rel: 0,
-      },
-    },
-  }}
-/>
-      </div>
-
-      {/* FULLSCREEN PLAYER */}
-      {expanded && (
-
-        <div className="fixed inset-0 z-[999] overflow-hidden bg-black">
-
-          {/* BACKGROUND */}
-          <div className="absolute inset-0">
-
-            <img
-              src={
-                currentSong.thumbnail
-                  ?.thumbnails?.[0]?.url
+      {currentSong.previewUrl ? (
+        <audio
+          key={currentSong.id}
+          ref={audioRef}
+          src={currentSong.previewUrl}
+          preload="none"
+          muted={volume === 0}
+          loop={repeat === "one" || (repeat === "all" && songs.length === 1)}
+          onLoadedMetadata={(event) =>
+            updatePlayback({
+              duration: Number.isFinite(event.currentTarget.duration)
+                ? event.currentTarget.duration
+                : 30,
+              ready: true,
+            })
+          }
+          onTimeUpdate={(event) =>
+            updatePlayback({ seconds: event.currentTarget.currentTime })
+          }
+          onPlaying={() => updatePlayback({ error: undefined, waiting: false })}
+          onWaiting={() => updatePlayback({ waiting: true })}
+          onEnded={playNextSong}
+          onError={playbackError}
+        />
+      ) : (
+        currentSong.youtubeId && (
+          <div className="hidden-media" aria-hidden="true">
+            <YouTubePlayer
+              key={currentSong.id}
+              ref={youtubeRef}
+              url={`https://www.youtube.com/watch?v=${currentSong.youtubeId}`}
+              playing={isPlaying}
+              volume={volume}
+              muted={volume === 0}
+              width="1px"
+              height="1px"
+              playsinline
+              loop={repeat === "one"}
+              onProgress={(state) =>
+                updatePlayback({ seconds: state.playedSeconds })
               }
-              alt={currentSong.title}
-              className="w-full h-full object-cover blur-3xl scale-125 opacity-20"
+              onDuration={(value) =>
+                updatePlayback({ duration: value, ready: true })
+              }
+              onEnded={playNextSong}
+              onError={playbackError}
+              config={{ youtube: { playerVars: { controls: 0, rel: 0 } } }}
             />
-
-            <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-black/70 to-black"></div>
           </div>
-
-          
-
-          {/* MAIN CONTENT */}
-         
-            <div className="relative z-10 min-h-screen flex flex-col justify-between px-4 sm:px-6 md:px-10 py-6 md:py-10 overflow-y-auto">
-
-  {/* TOP */}
-  <div className="flex justify-end">
-
-    <button
-      onClick={() =>
-        setExpanded(false)
-      }
-      className="text-white text-2xl"
-    >
-      <FaCompress />
-    </button>
-  </div>
-
-  {/* CENTER SECTION */}
-  <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-16 items-center max-w-6xl mx-auto w-full mt-6 md:mt-0">
-
-    {/* LEFT */}
-    <div className="flex justify-center">
-
-      <div className="relative">
-
-        <img
-          src={
-            currentSong.thumbnail
-              ?.thumbnails?.[0]?.url
-          }
-          alt={currentSong.title}
-          className="w-[180px] sm:w-[220px] md:w-[280px] lg:w-[320px] aspect-square rounded-[24px] md:rounded-[32px] shadow-2xl object-cover mx-auto"
-        />
-
-        {/* GLOW */}
-        <div className="absolute -inset-8 bg-gradient-to-r from-green-500 via-pink-500 to-purple-500 opacity-20 blur-3xl rounded-full -z-10"></div>
-      </div>
-    </div>
-
-    {/* RIGHT */}
-    <div>
-
-      <p className="text-green-400 text-sm uppercase tracking-[4px] mb-4">
-
-        Now Playing
-      </p>
-
-      <h2 className="text-2xl sm:text-3xl md:text-3xl lg:text-3xl font-black leading-tight line-clamp-3 text-center lg:text-left text-white">
-
-        {currentSong.title}
-      </h2>
-
-      <p className="text-gray-400 mt-4 text-sm sm:text-base md:text-lg text-center lg:text-left">
-
-        {
-          currentSong.channelTitle
-        }
-      </p>
-
-      {/* VISUALIZER */}
-      <div className="mt-10">
-
-        <Visualizer
-          isPlaying={isPlaying}
-        />
-      </div>
-
-      {/* PROGRESS */}
-      <div className="mt-10">
-
-        <input
-          type="range"
-          min={0}
-          max={0.999999}
-          step="any"
-          value={played || 0}
-          onChange={(e) => {
-
-            const seekTo =
-              Number(
-                e.target.value
-              );
-
-            setPlayed(
-              seekTo
-            );
-
-            if (
-              playerRef.current &&
-              playerRef.current.seekTo
-            ) {
-              playerRef.current.seekTo(
-                seekTo
-              );
-            }
-          }}
-          className="w-full h-1 accent-green-500 cursor-pointer"
-        />
-
-        <div className="flex justify-between text-sm text-gray-400 mt-2">
-
-          <span>
-            {formatTime(
-              played *
-                duration
-            )}
-          </span>
-
-          <span>
-            {formatTime(
-              duration
-            )}
-          </span>
-        </div>
-      </div>
-
-      {/* CONTROLS */}
-      <div className="flex items-center justify-center lg:justify-start gap-5 sm:gap-8 mt-8">
-
-        <button
-          onClick={
-            playPrevSong
-          }
-          className="text-white text-2xl"
-        >
-          <FaStepBackward />
-        </button>
-
-        <button
-          onClick={() =>
-            setIsPlaying(
-              !isPlaying
-            )
-          }
-          className="bg-green-500 text-black w-14 h-14 sm:w-16 sm:h-16 rounded-full flex items-center justify-center shadow-[0_0_40px_rgba(0,255,128,0.4)] hover:scale-105 transition"
-        >
-          {isPlaying ? (
-            <FaPause size={22} />
-          ) : (
-            <FaPlay
-              size={22}
-              className="ml-1"
-            />
-          )}
-        </button>
-
-        <button
-          onClick={
-            playNextSong
-          }
-          className="text-white text-2xl"
-        >
-          <FaStepForward />
-        </button>
-      </div>
-    </div>
-  </div>
-
-  {/* BOTTOM */}
-  <div className="flex justify-end">
-
-    <div className="hidden md:flex items-center gap-4">
-
-      <FaVolumeUp className="text-gray-400" />
-
-      <input
-        type="range"
-        min={0}
-        max={1}
-        step="0.01"
-        value={volume || 0}
-        onChange={(e) =>
-          setVolume(
-            Number(
-              e.target.value
-            )
-          )
-        }
-        className="w-32 accent-white"
-      />
-    </div>
-  </div>
-</div>
-            
-          </div>
-        
+        )
       )}
 
-      {/* MINI PLAYER */}
-      <div className="fixed bottom-3 left-1/2 -translate-x-1/2 w-[96%] md:w-[92%] lg:w-[80%] bg-white/10 backdrop-blur-3xl border border-white/10 rounded-[28px] px-4 md:px-6 py-4 z-50 shadow-2xl overflow-hidden">
-
-        {/* MINI PROGRESS */}
-        <div className="absolute bottom-0 left-0 w-full h-[3px] bg-white/10">
-
-          <div
-            className="h-full bg-green-500 transition-all duration-300"
-            style={{
-              width: `${played * 100}%`,
-            }}
-          />
-        </div>
-
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-
-          {/* LEFT */}
-          <div className="flex items-center gap-4 min-w-0">
-
-            <img
-              src={
-                currentSong.thumbnail
-                  ?.thumbnails?.[0]?.url
-              }
-              alt={currentSong.title}
-              className="w-14 h-14 rounded-2xl object-cover"
+      <section className="player-bar" aria-label="Music player">
+        {error && (
+          <div className="player-error" role="alert">
+            <span>{error}</span>
+            {currentSong.externalUrl && (
+              <a
+                href={currentSong.externalUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Listen to the full track
+                <FiArrowUpRight />
+              </a>
+            )}
+            <button
+              type="button"
+              className="icon-button"
+              aria-label="Dismiss playback message"
+              onClick={() => updatePlayback({ error: undefined })}
+            >
+              <FiX />
+            </button>
+          </div>
+        )}
+        <div className="player-song">
+          <button
+            type="button"
+            className="player-art-button"
+            aria-label="Open now playing"
+            onClick={() => setExpanded(true)}
+          >
+            <Artwork
+              src={currentSong.image}
+              alt={`${currentSong.album} cover`}
+              priority
             />
-
-            <div className="min-w-0">
-
-              <h2 className="font-semibold truncate text-sm text-white">
-
-                {currentSong.title}
-              </h2>
-
-              <p className="text-gray-400 text-xs truncate">
-
-                {
-                  currentSong.channelTitle
-                }
-              </p>
-            </div>
+          </button>
+          <div className="player-song-text">
+            <strong title={currentSong.title}>
+              {currentSong.title}
+              <span className="preview-tag">
+                {currentSong.previewUrl ? "PREVIEW" : "YOUTUBE"}
+              </span>
+            </strong>
+            <span title={currentSong.artist}>{currentSong.artist}</span>
           </div>
-
-          {/* CONTROLS */}
-          <div className="flex items-center justify-center gap-5 w-full md:w-auto">
-
-            <button
-              onClick={
-                playPrevSong
-              }
-              className="text-white"
-            >
-              <FaStepBackward />
-            </button>
-
-            <button
-              onClick={() =>
-                setIsPlaying(
-                  !isPlaying
-                )
-              }
-              className="bg-gradient-to-r from-green-400 to-green-500 text-black w-12 h-12 rounded-full flex items-center justify-center"
-            >
-              {isPlaying ? (
-                <FaPause />
-              ) : (
-                <FaPlay className="ml-1" />
-              )}
-            </button>
-
-            <button
-              onClick={
-                playNextSong
-              }
-              className="text-white"
-            >
-              <FaStepForward />
-            </button>
-          </div>
-
-          {/* RIGHT */}
-          <div className="flex items-center justify-center md:justify-end gap-4 w-full md:w-auto">
-
-            <div className="hidden lg:flex">
-
-              <Visualizer
-                isPlaying={isPlaying}
-              />
-            </div>
-
-            <button
-              onClick={() =>
-                setExpanded(true)
-              }
-              className="text-white text-xl hover:scale-110 transition"
-            >
-              <FaExpand />
-            </button>
-          </div>
+          <button
+            type="button"
+            className={`icon-button player-heart ${liked ? "liked" : ""}`}
+            aria-label={`${liked ? "Unlike" : "Like"} current song`}
+            aria-pressed={liked}
+            onClick={() => toggleFavorite(currentSong)}
+          >
+            <FiHeart />
+          </button>
         </div>
-      </div>
+        <div className="player-center">
+          {controls}
+          {progress}
+        </div>
+        <div className="player-tools">
+          <button
+            type="button"
+            className="icon-button volume-button"
+            aria-label={volume === 0 ? "Unmute" : "Mute"}
+            onClick={mute}
+          >
+            {volume === 0 ? <FiVolumeX /> : <FiVolume2 />}
+          </button>
+          <input
+            className="volume-slider"
+            type="range"
+            aria-label="Volume"
+            min={0}
+            max={1}
+            step={0.01}
+            value={volume}
+            onChange={(event) => setVolume(Number(event.target.value))}
+            style={sliderStyle(volume)}
+          />
+          <span className="player-tool-divider" />
+          <button
+            type="button"
+            className={`icon-button queue-button ${queueOpen ? "control-active" : ""}`}
+            aria-label="Open play queue"
+            title="Queue"
+            onClick={() => setQueueOpen(true)}
+          >
+            <FiList />
+          </button>
+          <button
+            type="button"
+            className="icon-button expand-button"
+            aria-label="Expand player"
+            title="Now playing"
+            onClick={() => setExpanded(true)}
+          >
+            <FiMaximize2 />
+          </button>
+        </div>
+      </section>
+
+      {expanded && (
+        <Dialog
+          label="Now playing"
+          className="now-playing-dialog"
+          onClose={() => setExpanded(false)}
+        >
+          <div className="now-playing-brand">
+            <Brand />
+            <span>Your own little world.</span>
+          </div>
+          <div className="now-playing-content">
+            <div className="now-playing-art">
+              <Artwork
+                src={currentSong.image}
+                alt={`${currentSong.album} cover`}
+              />
+              <span className="art-glow" />
+            </div>
+            <div className="now-playing-details">
+              <p className="eyebrow">PLAYING FROM YOUR QUEUE</p>
+              <span className="now-playing-preview">
+                {currentSong.previewUrl
+                  ? "Official track preview"
+                  : "YouTube playback"}
+              </span>
+              <h2>{currentSong.title}</h2>
+              <p>{currentSong.artist}</p>
+              <button
+                type="button"
+                className={`now-playing-like ${liked ? "liked" : ""}`}
+                aria-pressed={liked}
+                onClick={() => toggleFavorite(currentSong)}
+              >
+                {liked ? <FiCheck /> : <FiHeart />}
+                {liked
+                  ? "Saved to your liked songs"
+                  : "Save to your liked songs"}
+              </button>
+              <Visualizer isPlaying={isPlaying} />
+              {error && (
+                <p className="expanded-error" role="alert">
+                  {error}
+                </p>
+              )}
+              {progress}
+              {controls}
+              <div className="now-playing-tools">
+                <button
+                  type="button"
+                  className="icon-button"
+                  aria-label={volume === 0 ? "Unmute audio" : "Mute audio"}
+                  onClick={mute}
+                >
+                  {volume === 0 ? <FiVolumeX /> : <FiVolume2 />}
+                </button>
+                <input
+                  type="range"
+                  aria-label="Volume in expanded player"
+                  min={0}
+                  max={1}
+                  step={0.01}
+                  value={volume}
+                  onChange={(event) => setVolume(Number(event.target.value))}
+                  style={sliderStyle(volume)}
+                />
+                <button
+                  type="button"
+                  className="text-link"
+                  aria-label="Show queue"
+                  onClick={() => {
+                    setExpanded(false);
+                    setQueueOpen(true);
+                  }}
+                >
+                  <FiList />
+                  Queue
+                </button>
+              </div>
+              {currentSong.externalUrl && (
+                <a
+                  className="full-track-link"
+                  href={currentSong.externalUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  Listen to the full track
+                  <FiArrowUpRight />
+                </a>
+              )}
+            </div>
+          </div>
+          <p className="now-playing-footer">
+            A little less noise. A little more music.
+          </p>
+        </Dialog>
+      )}
+
+      {queueOpen && (
+        <Dialog
+          label="Play queue"
+          className="queue-dialog"
+          onClose={() => setQueueOpen(false)}
+        >
+          <p className="eyebrow">KEEP THE GOOD STUFF COMING</p>
+          <h2>Your queue.</h2>
+          <div className="queue-heading">
+            <span>
+              {songs.length} {songs.length === 1 ? "track" : "tracks"}
+            </span>
+            <button
+              type="button"
+              className="text-link"
+              onClick={() => setSongs([currentSong])}
+            >
+              Clear queue
+            </button>
+          </div>
+          <div className="queue-tracks">
+            {songs.map((song, index) => (
+              <div
+                className={`queue-track ${song.id === currentSong.id ? "queue-current" : ""}`}
+                key={song.id}
+              >
+                <span className="queue-index">
+                  {song.id === currentSong.id ? (
+                    <span className="queue-current-dot" />
+                  ) : (
+                    index + 1
+                  )}
+                </span>
+                <button
+                  type="button"
+                  className="queue-track-main"
+                  onClick={() => playSong(song, songs)}
+                >
+                  <Artwork src={song.image} alt="" />
+                  <span>
+                    <strong>{song.title}</strong>
+                    <span>{song.artist}</span>
+                  </span>
+                  <FiPlay />
+                </button>
+                {song.id !== currentSong.id && (
+                  <button
+                    type="button"
+                    className="icon-button"
+                    aria-label={`Remove ${song.title} from queue`}
+                    onClick={() =>
+                      setSongs((previous) =>
+                        previous.filter((item) => item.id !== song.id),
+                      )
+                    }
+                  >
+                    <FiX />
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+          <p className="queue-footer">Great company for whatever comes next.</p>
+        </Dialog>
+      )}
     </>
   );
 }

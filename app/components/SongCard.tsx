@@ -1,84 +1,159 @@
 "use client";
 
+import { useEffect, useRef, useState } from "react";
 import {
-  FaPlay,
-  FaHeart,
-} from "react-icons/fa";
+  FiHeart,
+  FiMoreHorizontal,
+  FiPlay,
+  FiPause,
+  FiPlus,
+  FiList,
+  FiTrash2,
+} from "react-icons/fi";
+import { usePlayer } from "../context/PlayerContext";
+import type { Song } from "../lib/types";
+import Artwork from "./Artwork";
 
-import { usePlayer }
-from "../context/PlayerContext";
+type Props = { song: Song; queue: Song[]; rank?: number; playlistId?: string };
 
-type SongProps = {
-  song: any;
-};
-
-export default function SongCard({
-  song,
-}: SongProps) {
-
+export default function SongCard({ song, queue, rank, playlistId }: Props) {
   const {
+    currentSong,
+    isPlaying,
+    playSong,
+    togglePlay,
     favorites,
     toggleFavorite,
+    playlists,
+    addToQueue,
+    addToPlaylist,
+    removeFromPlaylist,
   } = usePlayer();
-
-  const isFavorite =
-    favorites.some(
-      (fav: any) =>
-        fav.id === song.id
-    );
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const liked = favorites.some((favorite) => favorite.id === song.id);
+  const active = currentSong.id === song.id && isPlaying;
+  useEffect(() => {
+    if (!menuOpen) return;
+    const outside = (event: PointerEvent) => {
+      if (!menuRef.current?.contains(event.target as Node)) setMenuOpen(false);
+    };
+    const escape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setMenuOpen(false);
+    };
+    document.addEventListener("pointerdown", outside);
+    document.addEventListener("keydown", escape);
+    return () => {
+      document.removeEventListener("pointerdown", outside);
+      document.removeEventListener("keydown", escape);
+    };
+  }, [menuOpen]);
+  const play = () => {
+    if (active) togglePlay();
+    else playSong(song, queue);
+  };
+  const action = (callback: () => void) => {
+    callback();
+    setMenuOpen(false);
+  };
 
   return (
-    <div className="bg-[#181818] p-3 md:p-4 rounded-xl hover:bg-[#282828] transition duration-300 group">
-
-      {/* IMAGE */}
-      <div className="relative overflow-hidden rounded-lg">
-
-        <img
-          src={
-            song.thumbnail
-              ?.thumbnails?.[0]?.url
-          }
-          alt={song.title}
-          className="w-full h-40 sm:h-44 md:h-52 object-cover rounded-lg group-hover:scale-105 transition duration-300"
-        />
-
-        {/* HEART BUTTON */}
+    <article className={`song-card ${active ? "song-active" : ""}`}>
+      <div className="song-art">
         <button
-          onClick={(e) => {
-            e.stopPropagation();
-
-            toggleFavorite(song);
-          }}
-          className="absolute top-3 right-3 z-20"
+          type="button"
+          className="song-art-button"
+          onClick={play}
+          aria-label={`${active ? "Pause" : "Play"} ${song.title}`}
         >
-          <FaHeart
-            className={`text-lg md:text-xl transition ${
-              isFavorite
-                ? "text-red-500"
-                : "text-white"
-            }`}
-          />
+          <Artwork src={song.image} alt={`${song.album} cover`} />
+          <span className="song-art-gradient" />
+          <span className="song-play">{active ? <FiPause /> : <FiPlay />}</span>
         </button>
-
-        {/* PLAY BUTTON */}
+        {rank !== undefined && (
+          <span className="song-rank">{rank.toString().padStart(2, "0")}</span>
+        )}
         <button
-          className="absolute bottom-3 right-3 bg-green-500 w-10 h-10 md:w-12 md:h-12 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 translate-y-3 group-hover:translate-y-0 transition duration-300 shadow-lg"
+          type="button"
+          className={`song-like ${liked ? "liked" : ""}`}
+          aria-label={`${liked ? "Unlike" : "Like"} ${song.title}`}
+          aria-pressed={liked}
+          onClick={() => toggleFavorite(song)}
         >
-          <FaPlay className="text-black ml-1 text-sm" />
+          <FiHeart />
         </button>
+        {active && (
+          <span className="playing-bars" aria-label="Playing">
+            <i />
+            <i />
+            <i />
+          </span>
+        )}
       </div>
-
-      {/* SONG INFO */}
-      <div className="mt-3">
-
-        <h2 className="text-white font-semibold text-sm md:text-base line-clamp-2">
+      <div className="song-card-info">
+        <button
+          type="button"
+          className="song-title"
+          onClick={play}
+          title={song.title}
+        >
           {song.title}
-        </h2>
-
-        <p className="text-gray-400 text-xs md:text-sm mt-1 truncate">
-          {song.channelTitle}
-        </p>
+        </button>
+        <p title={song.artist}>{song.artist}</p>
+        <div className="song-card-meta">
+          <span>{song.categories[0] || "MUSIC"}</span>
+          <div className="song-menu-wrap" ref={menuRef}>
+            <button
+              type="button"
+              className="song-more"
+              onClick={() => setMenuOpen((previous) => !previous)}
+              aria-label={`More actions for ${song.title}`}
+              aria-expanded={menuOpen}
+            >
+              <FiMoreHorizontal />
+            </button>
+            {menuOpen && (
+              <div
+                className="song-dropdown"
+                role="group"
+                aria-label={`Actions for ${song.title}`}
+              >
+                <button
+                  type="button"
+                  onClick={() => action(() => addToQueue(song))}
+                >
+                  <FiList />
+                  Add to queue
+                </button>
+                {playlists.length > 0 && <p>Add to playlist</p>}
+                {playlists.map((playlist) => (
+                  <button
+                    type="button"
+                    key={playlist.id}
+                    onClick={() =>
+                      action(() => addToPlaylist(playlist.id, song))
+                    }
+                  >
+                    <FiPlus />
+                    <span>{playlist.name}</span>
+                  </button>
+                ))}
+                {playlistId && (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      action(() => removeFromPlaylist(playlistId, song.id))
+                    }
+                  >
+                    <FiTrash2 />
+                    Remove from playlist
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
       </div>
-    </div>
+    </article>
   );
 }
