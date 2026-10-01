@@ -4,6 +4,7 @@ import { FiPlay, FiPause, FiHeart } from "react-icons/fi";
 import { usePlayer } from "../context/PlayerContext";
 import { formatTime, type Song } from "../lib/types";
 import Artwork from "./Artwork";
+import TrackActions from "./TrackActions";
 
 type Props = { songs: Song[] };
 
@@ -25,7 +26,7 @@ export default function RecentlyPlayed({ songs }: Props) {
         <span /> <span>Time</span>
       </div>
       {songs.map((song, index) => {
-        const active = currentSong.id === song.id && isPlaying;
+        const active = currentSong?.id === song.id && isPlaying;
         const liked = favorites.some((item) => item.id === song.id);
         return (
           <div
@@ -53,15 +54,18 @@ export default function RecentlyPlayed({ songs }: Props) {
               </span>
             </button>
             <span className="track-album">{song.album}</span>
-            <button
-              type="button"
-              className={`icon-button ${liked ? "liked" : ""}`}
-              aria-label={`${liked ? "Unlike" : "Like"} ${song.title}`}
-              aria-pressed={liked}
-              onClick={() => toggleFavorite(song)}
-            >
-              <FiHeart />
-            </button>
+            <div className="track-row-actions">
+              <button
+                type="button"
+                className={`icon-button ${liked ? "liked" : ""}`}
+                aria-label={`${liked ? "Unlike" : "Like"} ${song.title}`}
+                aria-pressed={liked}
+                onClick={() => toggleFavorite(song)}
+              >
+                <FiHeart />
+              </button>
+              <TrackActions song={song} />
+            </div>
             <span className="track-duration">{formatTime(song.duration)}</span>
           </div>
         );

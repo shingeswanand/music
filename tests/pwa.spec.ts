@@ -1,5 +1,6 @@
 import { test, expect } from "@playwright/test";
 import { blockLiveMirrors } from "./live-mirrors";
+import { mockOfflineDiscovery } from "./fixtures";
 
 test.use({ serviceWorkers: "allow" });
 
@@ -13,6 +14,7 @@ test("production PWA opens its cached listening space offline without caching re
   );
   test.setTimeout(60_000);
   await blockLiveMirrors(page);
+  await mockOfflineDiscovery(page);
   await page.goto("/");
   await page.evaluate(async () => {
     await navigator.serviceWorker.ready;

@@ -1,6 +1,6 @@
-import type { Artist, Category, CuratedPlaylist, Song } from "./types";
+import type { DiscoveryCategory, Song } from "./types";
 
-export const CATEGORIES: Category[] = [
+export const CATEGORIES: DiscoveryCategory[] = [
   "For you",
   "Hindi",
   "Marathi",
@@ -182,99 +182,15 @@ export const SONGS: Song[] = [
   },
 ];
 
-export const ARTISTS: Artist[] = [
-  {
-    name: "Arijit Singh",
-    image: "/images/arijit.webp",
-    description: "The voice of a feeling",
-  },
-  {
-    name: "Shreya Ghoshal",
-    image: "/images/shreya.webp",
-    description: "Melodies that stay",
-  },
-  {
-    name: "Jasleen Royal",
-    image: "/images/jasleen.webp",
-    description: "A little indie magic",
-  },
-  {
-    name: "Atif Aslam",
-    image: "/images/atif.webp",
-    description: "Soul in every note",
-  },
-  {
-    name: "Pritam",
-    image: "/images/pritam.webp",
-    description: "Your favorite soundtracks",
-  },
-];
-
-export const CURATED_PLAYLISTS: CuratedPlaylist[] = [
-  {
-    id: "bollywood",
-    name: "Bollywood, with love",
-    description: "For your main-character moments.",
-    image: "/images/playlist-love.webp",
-    color: "#b67a87",
-    songIds: [
-      "1690466656",
-      "1635014240",
-      "1699783997",
-      "1134725347",
-      "1688981130",
-    ],
-  },
-  {
-    id: "late-night",
-    name: "Late night drive",
-    description: "City lights. Quiet thoughts.",
-    image: "/images/playlist-night.webp",
-    color: "#8684ba",
-    songIds: [
-      "1134725347",
-      "1699783997",
-      "1635014240",
-      "1690466656",
-      "1529522163",
-    ],
-  },
-  {
-    id: "marathi",
-    name: "Marathi मनातलं",
-    description: "A little closer to home.",
-    image: "/images/playlist-sunset.webp",
-    color: "#de9c60",
-    songIds: [
-      "1529522165",
-      "1660261040",
-      "1529522163",
-      "1529522164",
-      "1529522196",
-    ],
-  },
-  {
-    id: "good-energy",
-    name: "Only good energy",
-    description: "Turn it up. Let it all go.",
-    image: "/images/playlist-party.webp",
-    color: "#bd7661",
-    songIds: [
-      "1705952066",
-      "1529522196",
-      "1688981130",
-      "1070912815",
-      "1690466656",
-    ],
-  },
-];
-
-export function getPlaylistSongs(playlist: CuratedPlaylist) {
-  return playlist.songIds.flatMap((id) => {
-    const song = SONGS.find((item) => item.id === id);
-    return song ? [song] : [];
-  });
-}
+// Photo overrides for offline artwork only. The displayed artist list is
+// derived from the current provider's tracks, never from this lookup table.
+export const ARTIST_IMAGES: Record<string, string> = {
+  "Arijit Singh": "/images/arijit.webp",
+  "Shreya Ghoshal": "/images/shreya.webp",
+  "Jasleen Royal": "/images/jasleen.webp",
+  "Atif Aslam": "/images/atif.webp",
+  Pritam: "/images/pritam.webp",
+};
 
 export function searchCatalogue(query: string) {
   const words = query.toLowerCase().trim().split(/\s+/).filter(Boolean);

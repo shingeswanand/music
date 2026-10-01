@@ -27,7 +27,7 @@ import {
 } from "react-icons/fi";
 import { usePlayer } from "../context/PlayerContext";
 import { useStoredValue } from "../lib/storage";
-import { formatTime } from "../lib/types";
+import { formatTime, type Song } from "../lib/types";
 import Artwork from "./Artwork";
 import Dialog from "./Dialog";
 import Visualizer from "./Visualizer";
@@ -47,8 +47,32 @@ const sliderStyle = (fraction: number): CSSProperties => ({
 });
 
 export default function Player() {
+  const { currentSong } = usePlayer();
+  if (!currentSong)
+    return (
+      <section className="player-bar player-empty" aria-label="Music player">
+        <div className="player-song">
+          <FiList />
+          <div className="player-song-text">
+            <strong>Your soundtrack starts here</strong>
+            <span>Choose a track to start listening.</span>
+          </div>
+        </div>
+        <button
+          type="button"
+          className="main-play-button"
+          aria-label="Play playback"
+          disabled
+        >
+          <FiPlay />
+        </button>
+      </section>
+    );
+  return <ActivePlayer currentSong={currentSong} />;
+}
+
+function ActivePlayer({ currentSong }: { currentSong: Song }) {
   const {
-    currentSong,
     isPlaying,
     setIsPlaying,
     togglePlay,
@@ -178,9 +202,9 @@ export default function Player() {
     const elapsed = currentSong.previewUrl
       ? (audioRef.current?.currentTime ?? 0)
       : (youtubeRef.current?.getCurrentTime() ?? 0);
-    if (elapsed > 3 || currentIndex <= 0) seek(0);
+    if (elapsed > 3 || (currentIndex <= 0 && repeat !== "all")) seek(0);
     else playPrevSong();
-  }, [currentSong.previewUrl, currentIndex, playPrevSong, seek]);
+  }, [currentSong.previewUrl, currentIndex, repeat, playPrevSong, seek]);
 
   const mute = useCallback(() => {
     if (volume > 0) {

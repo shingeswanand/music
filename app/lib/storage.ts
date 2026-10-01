@@ -4,6 +4,9 @@ import { useCallback, useMemo, useSyncExternalStore } from "react";
 
 const STORAGE_EVENT = "sms-music-storage";
 const memory = new Map<string, string>();
+// Active playback must not switch songs or autoplay because another tab
+// persisted its listening session. A reload still restores the latest save.
+const localSnapshots = new Map<string, string | null>();
 
 function subscribe(callback: () => void) {
   const onStorage = (event: StorageEvent) => {
@@ -29,6 +32,12 @@ function read(key: string) {
   }
 }
 
+function snapshot(key: string, syncTabs: boolean) {
+  if (syncTabs) return read(key);
+  if (!localSnapshots.has(key)) localSnapshots.set(key, read(key));
+  return localSnapshots.get(key) ?? null;
+}
+
 function parse<T>(raw: string | null, fallback: T): T {
   if (!raw) return fallback;
   try {
@@ -38,16 +47,21 @@ function parse<T>(raw: string | null, fallback: T): T {
   }
 }
 
-export function useStoredValue<T>(key: string, fallback: T) {
+export function useStoredValue<T>(
+  key: string,
+  fallback: T,
+  options?: { syncTabs?: boolean },
+) {
+  const syncTabs = options?.syncTabs !== false;
   const raw = useSyncExternalStore(
     subscribe,
-    () => read(key),
+    () => snapshot(key, syncTabs),
     () => null,
   );
   const value = useMemo(() => parse(raw, fallback), [raw, fallback]);
   const setValue = useCallback(
     (next: T | ((previous: T) => T)) => {
-      const previous = parse(read(key), fallback);
+      const previous = parse(snapshot(key, syncTabs), fallback);
       const updated =
         typeof next === "function"
           ? (next as (previous: T) => T)(previous)
@@ -60,9 +74,10 @@ export function useStoredValue<T>(key: string, fallback: T) {
         // Fall back to session memory instead of interrupting playback.
         memory.set(key, serialized);
       }
+      if (!syncTabs) localSnapshots.set(key, serialized);
       window.dispatchEvent(new Event(STORAGE_EVENT));
     },
-    [key, fallback],
+    [key, fallback, syncTabs],
   );
   return [value, setValue] as const;
 }

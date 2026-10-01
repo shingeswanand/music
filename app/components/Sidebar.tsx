@@ -11,7 +11,7 @@ import {
   FiHeadphones,
   FiArrowUpRight,
 } from "react-icons/fi";
-import { CURATED_PLAYLISTS } from "../lib/catalogue";
+import { useDiscovery } from "../context/DiscoveryContext";
 import type { View } from "../lib/types";
 import { usePlayer } from "../context/PlayerContext";
 import Dialog from "./Dialog";
@@ -48,6 +48,7 @@ export default function Sidebar({
   onCloseMobile,
 }: Props) {
   const { favorites, playlists } = usePlayer();
+  const { mixes } = useDiscovery();
   const navigate = (next: View) => {
     onNavigate(next);
     onCloseMobile();
@@ -118,7 +119,7 @@ export default function Sidebar({
           </button>
         </nav>
         <div className="playlist-nav-heading">
-          <p className="nav-label">Your playlists</p>
+          <p className="nav-label">Mixes & playlists</p>
           <button
             type="button"
             className="icon-button"
@@ -132,7 +133,7 @@ export default function Sidebar({
           </button>
         </div>
         <nav className="playlist-nav" aria-label="Playlists">
-          {CURATED_PLAYLISTS.slice(0, 3).map((playlist) => (
+          {mixes.map((playlist) => (
             <button
               type="button"
               key={playlist.id}
