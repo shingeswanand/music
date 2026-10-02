@@ -30,6 +30,7 @@ import { useStoredValue } from "../lib/storage";
 import { formatTime, type Song } from "../lib/types";
 import Artwork from "./Artwork";
 import Dialog from "./Dialog";
+import QueueList from "./QueueList";
 import Visualizer from "./Visualizer";
 import { Brand } from "./Sidebar";
 
@@ -115,6 +116,11 @@ function ActivePlayer({ currentSong }: { currentSong: Song }) {
   const canSeek = validPlayback && playback.ready;
   const liked = favorites.some((song) => song.id === currentSong.id);
   const currentIndex = songs.findIndex((song) => song.id === currentSong.id);
+  // Media system handlers read the live position without re-registering.
+  const positionRef = useRef({ seconds: 0, duration: 0 });
+  useEffect(() => {
+    positionRef.current = { seconds, duration };
+  });
 
   const updatePlayback = useCallback(
     (update: Partial<Playback>) => {
@@ -244,15 +250,15 @@ function ActivePlayer({ currentSong }: { currentSong: Song }) {
   useEffect(() => {
     if (!("mediaSession" in navigator) || typeof MediaMetadata === "undefined")
       return;
+    const artwork = new URL(currentSong.image, window.location.origin).href;
     navigator.mediaSession.metadata = new MediaMetadata({
       title: currentSong.title,
       artist: currentSong.artist,
       album: currentSong.album,
       artwork: [
-        {
-          src: new URL(currentSong.image, window.location.origin).href,
-          sizes: "500x500",
-        },
+        { src: artwork, sizes: "96x96" },
+        { src: artwork, sizes: "256x256" },
+        { src: artwork, sizes: "500x500" },
       ],
     });
     const handlers: [MediaSessionAction, MediaSessionActionHandler][] = [
@@ -260,6 +266,8 @@ function ActivePlayer({ currentSong }: { currentSong: Song }) {
       ["pause", () => setIsPlaying(false)],
       ["previoustrack", previous],
       ["nexttrack", playNextSong],
+      ["seekbackward", () => seek(positionRef.current.seconds - 10)],
+      ["seekforward", () => seek(positionRef.current.seconds + 10)],
       [
         "seekto",
         (details) => {
@@ -288,6 +296,26 @@ function ActivePlayer({ currentSong }: { currentSong: Song }) {
     if ("mediaSession" in navigator)
       navigator.mediaSession.playbackState = isPlaying ? "playing" : "paused";
   }, [isPlaying]);
+
+  // Lock screens and system overlays show and scrub the live position while
+  // playback continues in the background.
+  useEffect(() => {
+    if (
+      !("mediaSession" in navigator) ||
+      typeof navigator.mediaSession.setPositionState !== "function"
+    )
+      return;
+    if (!Number.isFinite(duration) || duration <= 0) return;
+    try {
+      navigator.mediaSession.setPositionState({
+        duration,
+        playbackRate: 1,
+        position: Math.max(0, Math.min(seconds, duration)),
+      });
+    } catch {
+      /* Some engines reject out-of-range or non-finite positions. */
+    }
+  }, [seconds, duration]);
 
   const controls = (
     <div className="transport-controls">
@@ -645,48 +673,7 @@ function ActivePlayer({ currentSong }: { currentSong: Song }) {
               Clear queue
             </button>
           </div>
-          <div className="queue-tracks">
-            {songs.map((song, index) => (
-              <div
-                className={`queue-track ${song.id === currentSong.id ? "queue-current" : ""}`}
-                key={song.id}
-              >
-                <span className="queue-index">
-                  {song.id === currentSong.id ? (
-                    <span className="queue-current-dot" />
-                  ) : (
-                    index + 1
-                  )}
-                </span>
-                <button
-                  type="button"
-                  className="queue-track-main"
-                  onClick={() => playSong(song, songs)}
-                >
-                  <Artwork src={song.image} alt="" />
-                  <span>
-                    <strong>{song.title}</strong>
-                    <span>{song.artist}</span>
-                  </span>
-                  <FiPlay />
-                </button>
-                {song.id !== currentSong.id && (
-                  <button
-                    type="button"
-                    className="icon-button"
-                    aria-label={`Remove ${song.title} from queue`}
-                    onClick={() =>
-                      setSongs((previous) =>
-                        previous.filter((item) => item.id !== song.id),
-                      )
-                    }
-                  >
-                    <FiX />
-                  </button>
-                )}
-              </div>
-            ))}
-          </div>
+          <QueueList />
           <p className="queue-footer">Great company for whatever comes next.</p>
         </Dialog>
       )}

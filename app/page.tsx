@@ -37,6 +37,7 @@ import Dialog from "./components/Dialog";
 import Artwork from "./components/Artwork";
 import DiscoveryStatus from "./components/DiscoveryStatus";
 import DiscoveryTracks from "./components/DiscoveryTracks";
+import UpNextPanel from "./components/UpNextPanel";
 import { useDiscovery } from "./context/DiscoveryContext";
 import { useStoredValue } from "./lib/storage";
 import { isDiscoveryCategory } from "./lib/discovery";
@@ -297,7 +298,7 @@ export default function Home() {
         mobileOpen={mobileOpen}
         onCloseMobile={() => setMobileOpen(false)}
       />
-      <div className="main-shell">
+      <div className={`main-shell ${currentSong ? "main-shell-queue" : ""}`}>
         <Header
           query={query}
           onQueryChange={setQuery}
@@ -816,6 +817,7 @@ export default function Home() {
           </footer>
         </main>
       </div>
+      <UpNextPanel />
       {(creatingPlaylist || editingPlaylist) && (
         <Dialog
           label={editingPlaylist ? "Rename playlist" : "Create a playlist"}

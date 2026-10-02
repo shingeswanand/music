@@ -10,6 +10,7 @@
   --border: #292a24;
   --sidebar-width: 218px;
   --player-height: 90px;
+  --queue-width: 320px;
   color-scheme: dark;
 }
 
@@ -2454,13 +2455,22 @@ input[type="range"]:focus-visible::-webkit-slider-thumb {
 .queue-track:hover .queue-track-main > svg {
   display: block;
 }
-.queue-track > .icon-button {
+.queue-track .icon-button {
   width: 22px;
   height: 26px;
 }
-.queue-track > .icon-button > svg {
+.queue-track .icon-button > svg {
   width: 12px;
   height: 12px;
+}
+.queue-track .icon-button:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+.queue-track-tools {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
 }
 .queue-current .queue-track-main strong {
   color: var(--accent);
@@ -2471,6 +2481,105 @@ input[type="range"]:focus-visible::-webkit-slider-thumb {
   height: 4px;
   border-radius: 50%;
   background: var(--accent);
+}
+/* A tiny equalizer marks the current track, moving only while it plays. */
+.queue-eq {
+  display: inline-flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 12px;
+}
+.queue-eq > span {
+  width: 3px;
+  height: 5px;
+  border-radius: 2px;
+  background: var(--accent);
+  animation: queue-eq 0.9s ease-in-out infinite;
+}
+.queue-eq > span:nth-child(2) {
+  animation-delay: 0.2s;
+}
+.queue-eq > span:nth-child(3) {
+  animation-delay: 0.4s;
+}
+.queue-eq-paused > span {
+  animation-play-state: paused;
+  height: 4px;
+}
+@keyframes queue-eq {
+  0%,
+  100% {
+    height: 4px;
+  }
+  50% {
+    height: 12px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .queue-eq > span {
+    animation: none;
+    height: 8px;
+  }
+}
+
+/* The playing list stays visible next to your browsing on wide screens. */
+.queue-panel {
+  position: fixed;
+  right: 0;
+  top: 0;
+  bottom: var(--player-height);
+  width: var(--queue-width);
+  padding: 29px 23px 0;
+  border-left: 1px solid #25261f;
+  background: #0d0e0c;
+  display: none;
+  flex-direction: column;
+  z-index: 45;
+}
+.queue-panel-head {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  margin-bottom: 6px;
+}
+.queue-panel-icon {
+  width: 38px;
+  height: 38px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9px;
+  border: 1px solid #3c3d30;
+  background: #21221c;
+  color: var(--accent);
+}
+.queue-panel-icon > svg {
+  width: 17px;
+  height: 17px;
+}
+.queue-panel-head .eyebrow {
+  color: #a29672;
+  margin-bottom: 6px;
+  font-size: 8px;
+}
+.queue-panel-head h2 {
+  margin: 0;
+  font-size: 21px;
+  letter-spacing: -0.6px;
+  font-weight: 750;
+}
+.queue-panel .queue-tracks {
+  flex: 1;
+  padding-bottom: 24px;
+}
+@media (min-width: 1200px) {
+  .queue-panel {
+    display: flex;
+  }
+  .main-shell-queue {
+    margin-right: var(--queue-width);
+  }
 }
 .queue-footer {
   border-top: 1px solid #373e27;

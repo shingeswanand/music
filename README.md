@@ -18,13 +18,13 @@ Open http://localhost:3000. **No API keys or separate backend are required.** Th
 - On-demand mix and station tracklists, with refresh controls and real loading/empty/error states
 - A Daily Mix personalized by liked songs and listening history, with a reproducible daily order
 - Live song/artist/album search, full YouTube uploads, and official previews when YouTube is unavailable
-- Real playback: progress, seeking, next/previous, shuffle, repeat, volume and mute
+- Real playback that keeps running in the background: progress, seeking, next/previous, shuffle, repeat, volume and mute
 - Persistent likes, last 30 listening selections, playlists, display name and category preference
 - Playlist creation, renaming, reordering, adding/removing tracks and confirmed deletion
 - Track action menus on discovery cards, liked songs, listening history and mixes
-- Editable queue and expanded now-playing view; chosen song, queue and playback modes restored **paused** after reload
+- A live playing list: an always-visible **Up next** panel on wide screens and the same editable queue as a dialog on smaller ones, with tap-to-play, reorder, remove and clear; chosen song, queue and playback modes restored **paused** after reload
 - Mobile navigation, focus-trapped dialogs, keyboard shortcuts and reduced-motion support
-- Media Session controls and an installable PWA with an offline listening-space shell
+- Full Media Session integration — lock-screen/system controls show artwork, let you play, pause, skip, scrub ±10s and follow the live position, so listening continues when the tab is in the background — plus an installable PWA with an offline listening-space shell
 
 ## Data and playback
 
@@ -70,7 +70,7 @@ The public mirror list lives in `app/lib/youtube.ts`. Category queries, editoria
 2. Pick a language or mood; browse or search for a song and press play.
 3. Like a track and return Home: the Daily Mix now reflects your selection.
 4. Use a track's action menu to create a playlist, then rename it and move tracks earlier/later.
-5. Start a radio station and open the queue to inspect its fetched, repeating shuffle tracklist.
+5. Start a radio station and watch the **Up next** playing list (or open the queue on a smaller screen) to inspect its fetched, repeating shuffle tracklist; keep browsing — the music runs in the background and is controllable from your lock screen/system media overlay.
 6. Edit your display name from the profile menu and reload: the library, chosen queue and profile persist, with playback paused.
 
 ## Keyboard shortcuts
